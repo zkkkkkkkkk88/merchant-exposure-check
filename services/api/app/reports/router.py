@@ -64,8 +64,8 @@ def get_dashboard(merchant_id: UUID, session: SessionDep) -> DashboardRead:
         trend=[
             {
                 "label": (run.finished_at or run.created_at).strftime("%m/%d"),
-                "target": metrics.mention_rate,
-                "benchmark": metrics.mention_rate,
+                "target": metrics.readiness_score / 100,
+                "benchmark": 0,
             }
         ],
         categories=categories,

@@ -8,7 +8,7 @@ export function ExposureTrend({ trend }: Pick<DashboardData, "trend">) {
   const benchmark = trend.map((item, index) => point(item.benchmark, index, trend.length)).join(" ");
   return (
     <section className="trend-section" aria-labelledby="trend-title">
-      <div className="section-heading"><div><p className="kicker">READINESS OVER TIME</p><h2 id="trend-title">可见性准备度趋势</h2></div><div className="legend"><span className="target-key">本店</span><span className="benchmark-key">同类参考</span></div></div>
+      <div className="section-heading"><div><p className="kicker">READINESS OVER TIME</p><h2 id="trend-title">可见性准备度趋势</h2></div><div className="legend"><span className="target-key">本店</span><span className="benchmark-key">起始基线</span></div></div>
       <div className="chart-frame">
         <svg viewBox="0 0 100 100" role="img" aria-label="可见性准备度趋势折线图" preserveAspectRatio="none">
           <line x1="0" y1="25" x2="100" y2="25" /><line x1="0" y1="55" x2="100" y2="55" /><line x1="0" y1="85" x2="100" y2="85" />

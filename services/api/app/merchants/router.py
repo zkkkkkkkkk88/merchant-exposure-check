@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from app.db.session import get_session
 from app.merchants.schemas import (
     MerchantCreate,
-    MerchantProfileRead,
     MerchantProfileParseRequest,
+    MerchantProfileRead,
     MerchantProfileWrite,
     MerchantRead,
     MerchantUpdate,

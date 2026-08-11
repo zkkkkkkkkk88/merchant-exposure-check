@@ -8,8 +8,8 @@ from app.merchants.profile import parse_restaurant_profile_text
 from app.merchants.schemas import (
     MerchantCreate,
     MerchantProfileFactRead,
-    MerchantProfileRead,
     MerchantProfileParseRequest,
+    MerchantProfileRead,
     MerchantProfileWrite,
     MerchantSourceCreate,
     MerchantUpdate,

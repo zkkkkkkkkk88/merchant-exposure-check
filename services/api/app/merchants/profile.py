@@ -1,6 +1,6 @@
+import re
 from collections.abc import Iterable, Mapping
 from typing import Any
-import re
 
 from app.merchants.schemas import MerchantProfileFactRead
 

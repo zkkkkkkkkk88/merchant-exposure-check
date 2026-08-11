@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
-from collections.abc import Sequence, Set
+from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
@@ -22,8 +23,8 @@ def calculate_metrics(
     results: Sequence[AnalyzedQueryResult],
     target_brand_id: UUID,
     *,
-    confirmed_profile_fields: Set[str] = frozenset(),
-    required_profile_fields: Set[str] = frozenset(),
+    confirmed_profile_fields: AbstractSet[str] = frozenset(),
+    required_profile_fields: AbstractSet[str] = frozenset(),
 ) -> MetricSnapshot:
     valid_results = [item for item in results if item.is_valid]
     recommendation_results = [
@@ -92,10 +93,10 @@ def calculate_metrics(
         visibility_stage = "unrecognized"
 
     readiness_score = (
-        profile_completeness * Decimal("25")
-        + public_verifiability * Decimal("35")
-        + high_intent_hit_rate * Decimal("25")
-        + competitor_gap_closure * Decimal("15")
+        profile_completeness * Decimal(25)
+        + public_verifiability * Decimal(35)
+        + high_intent_hit_rate * Decimal(25)
+        + competitor_gap_closure * Decimal(15)
     ).quantize(SCORE_PRECISION, rounding=ROUND_HALF_UP)
 
     return MetricSnapshot(

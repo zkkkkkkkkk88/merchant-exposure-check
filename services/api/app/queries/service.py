@@ -3,8 +3,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.merchants.schemas import MerchantRead
 from app.merchants.profile import confirmed_fact_map
+from app.merchants.schemas import MerchantRead
 from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.queries.generator import TemplateQueryGenerator
 from app.queries.models import Query, QuerySet

@@ -1,9 +1,8 @@
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from typing import Literal
 
 from app.queries.schemas import QueryCategory, QueryIntent
 
