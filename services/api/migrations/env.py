@@ -3,10 +3,12 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from app.analysis import models as analysis_models  # noqa: F401
 from app.core.config import get_settings
 from app.db.base import Base
 from app.merchants import models as merchant_models  # noqa: F401
 from app.queries import models as query_models  # noqa: F401
+from app.reports import models as report_models  # noqa: F401
 from app.scans import models as scan_models  # noqa: F401
 
 config = context.config
