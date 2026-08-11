@@ -2,14 +2,79 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.reports.schemas import HistoryRead, ManualCheckCreate, ManualCheckRead, ReportRead
+from app.merchants.models import Merchant
+from app.reports.schemas import (
+    DashboardRead,
+    HistoryRead,
+    ManualCheckCreate,
+    ManualCheckRead,
+    ReportRead,
+)
 from app.reports.service import ReportService
+from app.scans.models import ScanRun
 
 router = APIRouter(tags=["reports"])
 SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@router.get("/merchants/{merchant_id}/dashboard", response_model=DashboardRead)
+def get_dashboard(merchant_id: UUID, session: SessionDep) -> DashboardRead:
+    merchant = session.get(Merchant, merchant_id)
+    run = session.scalar(
+        select(ScanRun)
+        .where(ScanRun.merchant_id == merchant_id)
+        .order_by(ScanRun.created_at.desc())
+        .limit(1)
+    )
+    if merchant is None or run is None:
+        raise HTTPException(status_code=404, detail="Dashboard not found")
+    metrics = ReportService.metrics(session, merchant_id, run.id)
+    categories = [
+        {
+            "name": category,
+            "rate": value,
+            "mentioned": round(float(value) * metrics.valid_query_count),
+            "total": metrics.valid_query_count,
+        }
+        for category, value in metrics.category_coverage.items()
+    ]
+    return DashboardRead(
+        merchant={
+            "id": str(merchant.id),
+            "name": merchant.name,
+            "branchName": merchant.branch_name,
+        },
+        lastRunAt=run.finished_at or run.created_at,
+        metrics={
+            "mentionRate": metrics.mention_rate,
+            "firstPositionRate": metrics.first_position_rate,
+            "sourceCoverageRate": metrics.source_coverage_rate,
+            "validQueryCount": metrics.valid_query_count,
+            "totalQueryCount": metrics.total_query_count,
+        },
+        trend=[
+            {
+                "label": (run.finished_at or run.created_at).strftime("%m/%d"),
+                "target": metrics.mention_rate,
+                "benchmark": metrics.mention_rate,
+            }
+        ],
+        categories=categories,
+        competitors=[
+            {
+                "name": name,
+                "mentions": count,
+                "firstPositions": 0,
+                "sourceCount": 0,
+            }
+            for name, count in metrics.competitor_counts.items()
+        ],
+        actions=[],
+    )
 
 
 @router.get("/merchants/{merchant_id}/reports/{scan_run_id}", response_model=ReportRead)

@@ -34,3 +34,9 @@ export async function createMerchant(payload: MerchantPayload): Promise<{ id: st
   if (!response.ok) throw new ApiError(response.status, "保存失败，请稍后重试");
   return response.json() as Promise<{ id: string }>;
 }
+
+export async function getMerchants(): Promise<Array<{ id: string; name: string; branch_name: string | null }>> {
+  const response = await fetch(`${API_BASE_URL}/merchants`, { cache: "no-store" });
+  if (!response.ok) throw new ApiError(response.status, "暂时无法读取商家列表。");
+  return response.json() as Promise<Array<{ id: string; name: string; branch_name: string | null }>>;
+}

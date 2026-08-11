@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.merchants.service import MerchantNotFoundError
+from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.scans.schemas import ManualResultsCreate, ScanRunCreate, ScanRunRead
 from app.scans.service import (
     InvalidManualResultError,
@@ -35,6 +35,16 @@ def create_scan_run(payload: ScanRunCreate, session: SessionDep) -> ScanRunRead:
     except NoApprovedQueriesError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return ScanRunRead.model_validate(run)
+
+
+@router.get("/merchant/{merchant_id}/runs", response_model=list[ScanRunRead])
+def list_scan_runs(merchant_id: UUID, session: SessionDep) -> list[ScanRunRead]:
+    if MerchantService.get(session, merchant_id) is None:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+    return [
+        ScanRunRead.model_validate(run)
+        for run in ScanService.list_for_merchant(session, merchant_id)
+    ]
 
 
 @router.get("/{scan_run_id}", response_model=ScanRunRead)

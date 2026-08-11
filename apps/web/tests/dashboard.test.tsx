@@ -6,6 +6,7 @@ import { getDashboard } from "@/lib/api";
 
 vi.mock("@/lib/api", () => ({
   getDashboard: vi.fn(),
+  getMerchants: vi.fn(),
 }));
 
 const mockedGetDashboard = vi.mocked(getDashboard);

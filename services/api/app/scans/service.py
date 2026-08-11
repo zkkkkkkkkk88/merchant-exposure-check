@@ -70,6 +70,16 @@ class ScanService:
         return session.get(ScanRun, scan_run_id)
 
     @staticmethod
+    def list_for_merchant(session: Session, merchant_id: UUID) -> list[ScanRun]:
+        return list(
+            session.scalars(
+                select(ScanRun)
+                .where(ScanRun.merchant_id == merchant_id)
+                .order_by(ScanRun.created_at.desc())
+            )
+        )
+
+    @staticmethod
     def add_manual_results(
         session: Session,
         scan_run_id: UUID,

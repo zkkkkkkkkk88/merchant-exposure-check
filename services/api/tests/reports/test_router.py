@@ -74,6 +74,11 @@ def test_report_calculates_target_mention_and_accepts_manual_check(
     assert float(report.json()["metrics"]["mention_rate"]) == 1.0
     assert float(report.json()["metrics"]["first_position_rate"]) == 1.0
 
+    dashboard = client.get(f"/merchants/{merchant.id}/dashboard")
+    assert dashboard.status_code == 200
+    assert float(dashboard.json()["metrics"]["mentionRate"]) == 1.0
+    assert dashboard.json()["merchant"]["name"] == "O'eat Gastronomy"
+
     checked = client.post(
         f"/scan-runs/{run.id}/manual-checks",
         json={

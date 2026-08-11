@@ -10,6 +10,8 @@
 cd services/api
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m scripts.seed_demo
 .\.venv\Scripts\python.exe -m pytest -v
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 ```
@@ -31,8 +33,16 @@ npm.cmd run dev
 docker compose up --build
 ```
 
-`worker` 服务将在检测执行功能完成后通过 `--profile scans` 启动。`ARK_API_KEY` 只允许配置在服务端环境中；手动导入模式不需要该密钥。
+`worker` 服务通过 `--profile scans` 启动。`ARK_API_KEY` 只允许配置在服务端环境中；手动导入模式不需要该密钥。
 
-## 当前阶段
+## 演示与验证
 
-项目按 [实施计划](docs/superpowers/plans/2026-08-11-doubao-geo-mvp.md) 分阶段构建。自动检测结果是豆包相关联网搜索的代理指标，不等同于豆包 App 固定排名。
+`python -m scripts.seed_demo` 会幂等创建 O'eat 示例商家、30 条已批准问题和一次无需网络的人工检测。详细流程见 [操作手册](docs/operator-guide.md)。
+
+```powershell
+cd apps/web
+npm.cmd test
+npx.cmd playwright test e2e/demo-flow.spec.ts
+```
+
+自动检测结果是豆包相关联网搜索的代理指标，不等同于豆包 App 固定排名。

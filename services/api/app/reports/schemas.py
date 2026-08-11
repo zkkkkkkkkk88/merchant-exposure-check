@@ -45,3 +45,13 @@ class ManualCheckRead(BaseModel):
     position: int | None
     sources: list[str]
     checked_at: datetime
+
+
+class DashboardRead(BaseModel):
+    merchant: dict[str, str | None]
+    lastRunAt: datetime
+    metrics: dict[str, Decimal | int]
+    trend: list[dict[str, str | Decimal]]
+    categories: list[dict[str, str | Decimal | int]]
+    competitors: list[dict[str, str | int]]
+    actions: list[dict[str, str | int]]
