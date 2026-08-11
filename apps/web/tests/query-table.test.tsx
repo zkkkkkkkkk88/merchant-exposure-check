@@ -87,11 +87,11 @@ describe("query library workspace", () => {
     vi.mocked(updateQueryAction).mockResolvedValueOnce({ ok: false, error: "保存失败，请稍后重试。" });
     renderTable();
 
-    const rejectedToggle = screen.getAllByRole("checkbox", { name: "启用" })[0];
-    fireEvent.click(rejectedToggle);
+    fireEvent.click(screen.getByRole("button", { name: "重新批准并用于检测" }));
 
     expect(await screen.findByText("保存失败，请稍后重试。")).toBeVisible();
-    expect(rejectedToggle).not.toBeChecked();
+    expect(screen.getByText("已拒绝")).toBeVisible();
+    expect(screen.getByRole("button", { name: "重新批准并用于检测" })).toBeEnabled();
   });
 
   it("disables empty scans and redirects immediately after creating a queued scan", async () => {

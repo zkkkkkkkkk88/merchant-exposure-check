@@ -226,6 +226,13 @@ export function QueryTable({
                           type="button"
                         >拒绝</button>
                       </>
+                    ) : item.reviewStatus === "rejected" ? (
+                      <button
+                        className="row-action"
+                        disabled={isSaving}
+                        onClick={() => persist(item.id, { reviewStatus: "approved", isEnabled: true }, { reviewStatus: "approved", isEnabled: true })}
+                        type="button"
+                      >重新批准并用于检测</button>
                     ) : (
                       <label className="toggle-label">
                         <input
