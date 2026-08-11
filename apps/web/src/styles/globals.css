@@ -142,9 +142,15 @@ tbody th { font-weight: 600; }
 
 .query-toolbar { align-items: center; display: flex; gap: 20px; justify-content: space-between; }
 .category-tabs { display: flex; flex-wrap: wrap; gap: 3px; }
-.category-tabs button, .text-button, .row-action { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 11px; padding: 8px 10px; }
-.category-tabs button[aria-pressed="true"] { background: var(--ink); color: white; }
+.category-tabs a, .text-button, .row-action { background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: 11px; padding: 8px 10px; }
+.category-tabs a[aria-current="page"] { background: var(--ink); color: white; }
 .text-button { color: var(--accent); text-decoration: underline; text-underline-offset: 4px; }
+.scan-launcher { align-items: center; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; padding: 18px 0; }
+.scan-launcher span { color: var(--muted); display: block; font-size: 11px; margin-top: 5px; }
+.scan-launcher .inline-error, .save-error { color: #a43f35; }
+.save-state { display: block; font-size: 10px; font-weight: 400; margin-top: 5px; }
+.save-saving { color: var(--muted); }
+.save-saved { color: #37735b; }
 .scan-count { color: var(--muted); font-size: 11px; margin: 22px 0 8px; text-align: right; }
 .query-workspace table { min-width: 940px; }
 .query-workspace tbody th { width: 34%; }

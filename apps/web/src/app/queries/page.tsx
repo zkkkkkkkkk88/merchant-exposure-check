@@ -1,11 +1,36 @@
 import Link from "next/link";
+
 import { AppShell } from "@/components/app-shell";
 import { QueryTable } from "@/components/query-table";
+import { getMerchants, getQuerySets } from "@/lib/api";
 
-const queries = [
-  { id: "q1", text: "杭州适合约会的西餐厅有哪些？", category: "occasion", reason: "验证约会场景关联", priority: 3, reviewStatus: "pending" as const, isEnabled: true },
-  { id: "q2", text: "钱江新城人均 500 元以内餐厅推荐", category: "price", reason: "验证价格带发现", priority: 3, reviewStatus: "pending" as const, isEnabled: true },
-  { id: "q3", text: "杭州万象城附近精致餐厅", category: "geo", reason: "验证地域发现", priority: 2, reviewStatus: "approved" as const, isEnabled: true },
-  { id: "q4", text: "杭州季节套餐餐厅推荐", category: "product", reason: "验证产品关联", priority: 2, reviewStatus: "rejected" as const, isEnabled: false },
-];
-export default function QueriesPage() { return <AppShell><div className="workspace-page wide-page"><header className="page-header"><div><p className="kicker">QUERY LIBRARY / V1</p><h1>问题库</h1><p>批准的问题才会进入检测；修改会保留在当前版本。</p></div><Link className="button primary" href="/scans">进入检测</Link></header><QueryTable initialQueries={queries} /></div></AppShell>; }
+const categories = new Set(["all", "geo", "category", "product", "price", "occasion", "need"]);
+
+export default async function QueriesPage({ searchParams = Promise.resolve({}) }: { searchParams?: Promise<{ merchant?: string; category?: string }> }) {
+  const params = await searchParams;
+  const merchantId = params.merchant ?? (await getMerchants())[0]?.id;
+  const selectedCategory = categories.has(params.category ?? "all")
+    ? (params.category ?? "all") as "all" | "geo" | "category" | "product" | "price" | "occasion" | "need"
+    : "all";
+  const querySets = merchantId ? await getQuerySets(merchantId) : [];
+  const latest = querySets.at(-1);
+  const queries = latest?.queries.map((query) => ({ id: query.id, text: query.text, category: query.category, reason: query.reason, priority: query.priority, reviewStatus: query.review_status, isEnabled: query.is_enabled })) ?? [];
+  return (
+    <AppShell>
+      <div className="workspace-page wide-page">
+        <header className="page-header">
+          <div><p className="kicker">QUERY LIBRARY{latest ? ` / V${latest.version}` : ""}</p><h1>问题库</h1><p>这里只显示数据库中真实生成并保存的问题。</p></div>
+          {merchantId && <Link className="button primary" href={`/scans?merchant=${merchantId}`}>查看检测记录</Link>}
+        </header>
+        {merchantId && latest && queries.length ? (
+          <QueryTable
+            initialQueries={queries}
+            merchantId={merchantId}
+            querySetId={latest.id}
+            selectedCategory={selectedCategory}
+          />
+        ) : <div className="state-page"><h2>暂无问题</h2><p>请先为商家生成问题库。</p></div>}
+      </div>
+    </AppShell>
+  );
+}
