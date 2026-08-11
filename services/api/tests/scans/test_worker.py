@@ -1,3 +1,5 @@
+import subprocess
+import sys
 from collections.abc import Iterator
 
 import pytest
@@ -18,6 +20,23 @@ from app.scans.adapters.base import (
 from app.scans.models import QueryResult, ScanRun
 from app.scans.service import ScanService
 from app.scans.worker import build_adapter_registry, process_next_scan
+
+
+def test_standalone_worker_registers_all_foreign_key_tables() -> None:
+    script = (
+        "from app.scans import worker; "
+        "from app.db.base import Base; "
+        "print('merchants' in Base.metadata.tables)"
+    )
+
+    completed = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True,
+        check=True,
+        text=True,
+    )
+
+    assert completed.stdout.strip() == "True"
 
 
 class SequenceAdapter:

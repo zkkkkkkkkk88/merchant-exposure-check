@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.db.session import SessionLocal
+from app.merchants import models as merchant_models  # noqa: F401
 from app.queries.models import Query
 from app.scans.adapters.ark import ArkSearchAdapter
 from app.scans.adapters.base import (

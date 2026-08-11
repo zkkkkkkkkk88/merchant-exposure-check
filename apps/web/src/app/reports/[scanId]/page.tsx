@@ -1,5 +1,32 @@
 import Link from "next/link";
+
 import { AppShell } from "@/components/app-shell";
 import { MetricStrip } from "@/components/metric-strip";
+import { getMerchant, getReport, getScanRun } from "@/lib/api";
 
-export default async function ReportPage({ params }: { params: Promise<{ scanId: string }> }) { const { scanId } = await params; return <AppShell><div className="workspace-page"><header className="page-header"><div><p className="kicker">EVIDENCE REPORT / {scanId}</p><h1>曝光分析报告</h1><p>O&apos;eat Gastronomy · 2026-08-11</p></div><Link className="button secondary" href={`/scans/${scanId}`}>返回原始结果</Link></header><MetricStrip metrics={{ mentionRate: .4, firstPositionRate: .25, sourceCoverageRate: .6, validQueryCount: 18, totalQueryCount: 20 }} /><div className="report-sections"><section><p className="kicker">CONFIRMED GAP</p><h2>需要优先补齐的信息</h2><article className="finding-row"><span>01</span><div><strong>营业时间与价格区间缺少稳定公开来源</strong><p>3 条竞品结果包含对应事实，目标商家资料尚未形成可追溯引用。</p></div><b>4 条证据</b></article><article className="finding-row uncertain-finding"><span>02</span><div><strong>约会场景关联仍需核验</strong><p>现有证据置信度较低，仅作为待核验线索。</p></div><b>待核验</b></article></section><section><p className="kicker">BOUNDARY</p><h2>结论边界</h2><p className="method-copy">本报告不承诺控制豆包内部排名；自动检测是规模化代理指标，建议结合豆包 App 人工抽查。</p></section></div></div></AppShell>; }
+export default async function ReportPage({ params }: { params: Promise<{ scanId: string }> }) {
+  const { scanId } = await params;
+  const run = await getScanRun(scanId);
+  if (!run) return <AppShell><div className="state-page"><h1>报告不存在</h1><Link href="/scans">返回检测记录</Link></div></AppShell>;
+  const [merchant, report] = await Promise.all([getMerchant(run.merchant_id), getReport(run.merchant_id, scanId)]);
+  if (!report) return <AppShell><div className="state-page"><h1>报告尚未生成</h1><Link href={`/scans/${scanId}`}>查看检测详情</Link></div></AppShell>;
+  const metrics = report.metrics;
+  return (
+    <AppShell>
+      <div className="workspace-page">
+        <header className="page-header">
+          <div><p className="kicker">EVIDENCE REPORT / {scanId}</p><h1>曝光分析报告</h1><p>{merchant?.name ?? "未知商家"} · {new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date(run.finished_at ?? run.created_at))}</p></div>
+          <Link className="button secondary" href={`/scans/${scanId}`}>返回原始结果</Link>
+        </header>
+        <MetricStrip metrics={{ mentionRate: Number(metrics.mention_rate), firstPositionRate: Number(metrics.first_position_rate), sourceCoverageRate: Number(metrics.source_coverage_rate), validQueryCount: metrics.valid_query_count, totalQueryCount: metrics.total_query_count }} />
+        <div className="report-sections">
+          <section>
+            <p className="kicker">EVIDENCE FINDINGS</p><h2>基于本次扫描的发现</h2>
+            {report.findings.length ? report.findings.map((finding, index) => <article className="finding-row" key={index}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{String(finding.title ?? "检测发现")}</strong><p>{String(finding.description ?? "")}</p></div></article>) : <p className="method-copy">本次扫描没有生成可确认的行动建议。</p>}
+          </section>
+          <section><p className="kicker">BOUNDARY</p><h2>结论边界</h2><p className="method-copy">本报告来自真实联网回答，仅描述本次问题样本，不代表平台内部排名，也不补写缺少证据的事实。</p></section>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
