@@ -204,7 +204,6 @@ export function QueryTable({
                       onBlur={() => handleTextBlur(item.id)}
                       onChange={(event) => replaceQuery(item.id, { ...item, text: event.target.value })}
                     />
-                    {status && <small className={`save-state save-${status.state}`}>{status.message}</small>}
                   </th>
                   <td>{categories.find(([value]) => value === item.category)?.[1]}</td>
                   <td>{item.reason}</td>
@@ -226,22 +225,26 @@ export function QueryTable({
                           type="button"
                         >拒绝</button>
                       </>
-                    ) : item.reviewStatus === "rejected" ? (
-                      <button
-                        className="row-action"
-                        disabled={isSaving}
-                        onClick={() => persist(item.id, { reviewStatus: "approved", isEnabled: true }, { reviewStatus: "approved", isEnabled: true })}
-                        type="button"
-                      >重新批准并用于检测</button>
                     ) : (
                       <label className="toggle-label">
                         <input
+                          aria-label={`用于检测 ${item.id}`}
                           type="checkbox"
-                          checked={item.isEnabled}
+                          checked={item.reviewStatus === "approved" && item.isEnabled}
                           disabled={isSaving}
-                          onChange={(event) => persist(item.id, { isEnabled: event.target.checked }, { isEnabled: event.target.checked })}
-                        />启用
+                          onChange={(event) => event.target.checked
+                            ? persist(item.id, { reviewStatus: "approved", isEnabled: true }, { reviewStatus: "approved", isEnabled: true })
+                            : persist(item.id, { isEnabled: false }, { isEnabled: false })}
+                        />用于检测
                       </label>
+                    )}
+                    {status && (
+                      <small
+                        className={`save-state save-${status.state}`}
+                        role={status.state === "error" ? "alert" : "status"}
+                      >
+                        {status.message}
+                      </small>
                     )}
                   </td>
                 </tr>
