@@ -93,6 +93,11 @@ class MerchantProfileWrite(BaseModel):
         return self
 
 
+class MerchantProfileParseRequest(BaseModel):
+    raw_text: str = Field(min_length=10, max_length=20_000)
+    source_urls: list[HttpUrl] = Field(default_factory=list)
+
+
 class MerchantProfileFactRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

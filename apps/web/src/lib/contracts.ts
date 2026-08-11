@@ -33,10 +33,28 @@ export interface QueryData {
   category: string;
   reason: string;
   priority: number;
+  intent_type?: "recommendation" | "verification";
+  fact_keys?: string[];
   review_status: "pending" | "approved" | "rejected";
   is_enabled: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export type ProfileValue = string | number | boolean | string[];
+
+export interface MerchantProfileFactData {
+  id?: string | null;
+  field_key: string;
+  value: ProfileValue;
+  confirmation_status: "pending" | "confirmed" | "rejected";
+  confidence?: number | null;
+  source_urls: string[];
+}
+
+export interface MerchantProfileData {
+  merchant_id: string;
+  facts: MerchantProfileFactData[];
 }
 
 export interface QuerySetData {
@@ -96,7 +114,12 @@ export interface MetricSnapshotData {
   total_query_count: number;
   valid_query_count: number;
   mention_rate: string | number;
-  first_position_rate: string | number;
+  visibility_stage: "unrecognized" | "relevant" | "mentioned" | "recommended";
+  profile_completeness: string | number;
+  public_verifiability: string | number;
+  high_intent_hit_rate: string | number;
+  competitor_gap_closure: string | number;
+  readiness_score: string | number;
   task_valid_rate: string | number;
   source_coverage_rate: string | number;
   independent_source_count: number;
@@ -123,7 +146,12 @@ export interface DashboardData {
   lastRunAt: string;
   metrics: {
     mentionRate: number;
-    firstPositionRate: number;
+    visibilityStage: "unrecognized" | "relevant" | "mentioned" | "recommended";
+    readinessScore: number;
+    profileCompleteness: number;
+    publicVerifiability: number;
+    highIntentHitRate: number;
+    competitorGapClosure: number;
     sourceCoverageRate: number;
     validQueryCount: number;
     totalQueryCount: number;
@@ -133,7 +161,6 @@ export interface DashboardData {
   competitors: Array<{
     name: string;
     mentions: number;
-    firstPositions: number;
     sourceCount: number;
   }>;
   actions: Array<{

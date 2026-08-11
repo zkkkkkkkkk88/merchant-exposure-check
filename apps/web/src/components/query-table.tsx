@@ -18,6 +18,7 @@ export interface QueryRow {
   priority: number;
   reviewStatus: ReviewStatus;
   isEnabled: boolean;
+  intentType?: "recommendation" | "verification";
 }
 
 const categories: Array<[Category, string]> = [
@@ -188,7 +189,7 @@ export function QueryTable({
       <div className="table-wrap">
         <table aria-label="待审核问题库">
           <thead>
-            <tr><th>问题</th><th>分类</th><th>生成理由</th><th>优先级</th><th>状态</th><th>操作</th></tr>
+            <tr><th>问题</th><th>检测类型</th><th>分类</th><th>生成理由</th><th>优先级</th><th>状态</th><th>操作</th></tr>
           </thead>
           <tbody>
             {visibleQueries.map((item) => {
@@ -205,6 +206,7 @@ export function QueryTable({
                       onChange={(event) => replaceQuery(item.id, { ...item, text: event.target.value })}
                     />
                   </th>
+                  <td><span className={`intent-label intent-${item.intentType ?? "recommendation"}`}>{item.intentType === "verification" ? "信息验证" : "推荐检测"}</span></td>
                   <td>{categories.find(([value]) => value === item.category)?.[1]}</td>
                   <td>{item.reason}</td>
                   <td>{item.priority}</td>

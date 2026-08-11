@@ -110,3 +110,31 @@ def test_profile_rejects_duplicate_field_keys(
     )
 
     assert response.status_code == 422
+
+
+def test_profile_parser_extracts_restaurant_facts_as_pending_candidates(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="O'eat Gastronomy", city="杭州", industry="餐饮"),
+    )
+
+    response = client.post(
+        f"/merchants/{merchant.id}/profile/parse",
+        json={
+            "raw_text": "O'eat Gastronomy 是杭州万象城西餐厅，双人餐在300到450元，提供宝宝椅，无烟餐厅，地铁直达，适合约会和亲子。",
+            "source_urls": ["https://example.com/oeat"],
+        },
+    )
+
+    assert response.status_code == 200
+    facts = {item["field_key"]: item for item in response.json()["facts"]}
+    assert facts["category.precise"]["value"] == "西餐厅"
+    assert facts["price.display"]["value"] == "双人餐 300–450 元"
+    assert facts["service.baby_chair"]["value"] is True
+    assert facts["service.smoke_free"]["value"] is True
+    assert facts["need.transport"]["value"] == "交通方便"
+    assert facts["occasion.list"]["value"] == ["约会", "亲子"]
+    assert all(item["confirmation_status"] == "pending" for item in facts.values())

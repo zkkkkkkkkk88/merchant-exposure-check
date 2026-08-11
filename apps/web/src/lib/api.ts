@@ -2,6 +2,8 @@ import type {
   DashboardData,
   HistoryData,
   MerchantData,
+  MerchantProfileData,
+  MerchantProfileFactData,
   QueryData,
   QuerySetData,
   QueryUpdateData,
@@ -62,6 +64,56 @@ export function getMerchant(merchantId: string): Promise<MerchantData | null> {
     `/merchants/${encodeURIComponent(merchantId)}`,
     "暂时无法读取商家资料。",
   );
+}
+
+export function getMerchantProfile(merchantId: string): Promise<MerchantProfileData | null> {
+  return readJson<MerchantProfileData>(
+    `/merchants/${encodeURIComponent(merchantId)}/profile`,
+    "暂时无法读取商家画像。",
+  );
+}
+
+export async function parseMerchantProfile(
+  merchantId: string,
+  rawText: string,
+  sourceUrls: string[] = [],
+): Promise<MerchantProfileData> {
+  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/profile/parse`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ raw_text: rawText, source_urls: sourceUrls }),
+  });
+  if (!response.ok) throw new ApiError(response.status, "资料识别失败，请检查内容后重试。");
+  return response.json() as Promise<MerchantProfileData>;
+}
+
+export async function replaceMerchantProfile(
+  merchantId: string,
+  facts: MerchantProfileFactData[],
+): Promise<MerchantProfileData> {
+  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/profile`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ facts }),
+  });
+  if (!response.ok) throw new ApiError(response.status, "保存商家画像失败，请稍后重试。");
+  return response.json() as Promise<MerchantProfileData>;
+}
+
+export async function generateQuerySet(
+  merchantId: string,
+  count = 12,
+): Promise<{ id: string }> {
+  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/query-sets/generate`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ count }),
+  });
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({})) as { detail?: string };
+    throw new ApiError(response.status, detail.detail ?? "生成问题失败，请先确认必要资料。");
+  }
+  return response.json() as Promise<{ id: string }>;
 }
 
 export async function getQuerySets(merchantId: string): Promise<QuerySetData[]> {

@@ -8,6 +8,7 @@ from app.db.session import get_session
 from app.merchants.schemas import (
     MerchantCreate,
     MerchantProfileRead,
+    MerchantProfileParseRequest,
     MerchantProfileWrite,
     MerchantRead,
     MerchantUpdate,
@@ -71,5 +72,17 @@ def replace_merchant_profile(
 ) -> MerchantProfileRead:
     try:
         return MerchantService.replace_profile(session, merchant_id, payload)
+    except MerchantNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Merchant not found") from error
+
+
+@router.post("/{merchant_id}/profile/parse", response_model=MerchantProfileRead)
+def parse_merchant_profile(
+    merchant_id: UUID,
+    payload: MerchantProfileParseRequest,
+    session: SessionDep,
+) -> MerchantProfileRead:
+    try:
+        return MerchantService.parse_profile(session, merchant_id, payload)
     except MerchantNotFoundError as error:
         raise HTTPException(status_code=404, detail="Merchant not found") from error

@@ -14,7 +14,7 @@ export default async function QueriesPage({ searchParams = Promise.resolve({}) }
     : "all";
   const querySets = merchantId ? await getQuerySets(merchantId) : [];
   const latest = querySets.at(-1);
-  const queries = latest?.queries.map((query) => ({ id: query.id, text: query.text, category: query.category, reason: query.reason, priority: query.priority, reviewStatus: query.review_status, isEnabled: query.is_enabled })) ?? [];
+  const queries = latest?.queries.map((query) => ({ id: query.id, text: query.text, category: query.category, reason: query.reason, priority: query.priority, reviewStatus: query.review_status, isEnabled: query.is_enabled, intentType: query.intent_type ?? "recommendation" })) ?? [];
   return (
     <AppShell>
       <div className="workspace-page wide-page">

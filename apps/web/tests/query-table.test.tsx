@@ -20,7 +20,7 @@ vi.mock("@/app/queries/actions", () => ({
 
 const queries: QueryRow[] = [
   { id: "q1", text: "杭州适合约会的餐厅？", category: "occasion", reason: "场景匹配", priority: 3, reviewStatus: "pending", isEnabled: false },
-  { id: "q2", text: "钱江新城西餐推荐", category: "geo", reason: "地域发现", priority: 2, reviewStatus: "rejected", isEnabled: false },
+  { id: "q2", text: "钱江新城西餐推荐", category: "geo", reason: "地域发现", priority: 2, reviewStatus: "rejected", isEnabled: false, intentType: "verification" },
   { id: "q3", text: "杭州餐饮价格", category: "price", reason: "价格覆盖", priority: 1, reviewStatus: "approved", isEnabled: true },
 ];
 
@@ -57,6 +57,13 @@ beforeEach(() => {
 });
 
 describe("query library workspace", () => {
+  it("distinguishes recommendation questions from information verification", () => {
+    renderTable();
+
+    expect(screen.getAllByText("推荐检测").length).toBeGreaterThan(0);
+    expect(screen.getByText("信息验证")).toBeVisible();
+  });
+
   it("uses category URLs with counts and renders only the selected category", () => {
     renderTable({ selectedCategory: "geo" });
 

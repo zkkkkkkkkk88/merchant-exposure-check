@@ -4,10 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.merchants.models import Merchant, MerchantProfileFact, MerchantSource
+from app.merchants.profile import parse_restaurant_profile_text
 from app.merchants.schemas import (
     MerchantCreate,
     MerchantProfileFactRead,
     MerchantProfileRead,
+    MerchantProfileParseRequest,
     MerchantProfileWrite,
     MerchantSourceCreate,
     MerchantUpdate,
@@ -136,3 +138,21 @@ class MerchantService:
         session.commit()
         session.refresh(merchant)
         return MerchantService.get_profile(session, merchant_id)
+
+    @staticmethod
+    def parse_profile(
+        session: Session,
+        merchant_id: UUID,
+        payload: MerchantProfileParseRequest,
+    ) -> MerchantProfileRead:
+        merchant = MerchantService.get(session, merchant_id)
+        if merchant is None:
+            raise MerchantNotFoundError(str(merchant_id))
+        return MerchantProfileRead(
+            merchant_id=merchant.id,
+            facts=parse_restaurant_profile_text(
+                payload.raw_text,
+                city=merchant.city,
+                source_urls=[str(url) for url in payload.source_urls],
+            ),
+        )
