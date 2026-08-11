@@ -4,13 +4,19 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.merchants.schemas import MerchantRead
+from app.merchants.profile import confirmed_fact_map
 from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.queries.generator import TemplateQueryGenerator
 from app.queries.models import Query, QuerySet
+from app.queries.rules.restaurant import RestaurantProfile, RestaurantRulePack
 from app.queries.schemas import QueryUpdate
 
 
 class QueryNotFoundError(LookupError):
+    pass
+
+
+class IncompleteMerchantProfileError(ValueError):
     pass
 
 
@@ -26,22 +32,37 @@ class QueryLibraryService:
         if merchant is None:
             raise MerchantNotFoundError(str(merchant_id))
 
-        generator = generator or TemplateQueryGenerator()
+        if generator is None:
+            facts = confirmed_fact_map(MerchantService.get_profile(session, merchant_id).facts)
+            rule_pack = RestaurantRulePack()
+            try:
+                drafts = rule_pack.generate(
+                    RestaurantProfile(merchant_name=merchant.name, facts=facts),
+                    count,
+                )
+            except ValueError as error:
+                raise IncompleteMerchantProfileError(str(error)) from error
+            generator_name = rule_pack.name
+        else:
+            drafts = generator.generate(MerchantRead.model_validate(merchant), count)
+            generator_name = generator.name
         latest_version = session.scalar(
             select(func.max(QuerySet.version)).where(QuerySet.merchant_id == merchant_id)
         )
         query_set = QuerySet(
             merchant_id=merchant_id,
             version=(latest_version or 0) + 1,
-            generator_name=generator.name,
+            generator_name=generator_name,
             queries=[
                 Query(
                     text=draft.text,
                     category=draft.category,
                     reason=draft.reason,
                     priority=draft.priority,
+                    intent_type=draft.intent_type,
+                    fact_keys=draft.fact_keys,
                 )
-                for draft in generator.generate(MerchantRead.model_validate(merchant), count)
+                for draft in drafts
             ],
         )
         session.add(query_set)

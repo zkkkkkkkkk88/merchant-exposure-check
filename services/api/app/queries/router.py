@@ -12,7 +12,11 @@ from app.queries.schemas import (
     QuerySetRead,
     QueryUpdate,
 )
-from app.queries.service import QueryLibraryService, QueryNotFoundError
+from app.queries.service import (
+    IncompleteMerchantProfileError,
+    QueryLibraryService,
+    QueryNotFoundError,
+)
 
 router = APIRouter(tags=["queries"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -32,6 +36,8 @@ def generate_query_set(
         query_set = QueryLibraryService.generate(session, merchant_id, payload.count)
     except MerchantNotFoundError as error:
         raise HTTPException(status_code=404, detail="Merchant not found") from error
+    except IncompleteMerchantProfileError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return QuerySetRead.model_validate(query_set)
 
 

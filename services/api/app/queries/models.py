@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    JSON,
     String,
     UniqueConstraint,
     Uuid,
@@ -56,6 +57,10 @@ class Query(Base):
             "category IN ('geo', 'category', 'product', 'price', 'occasion', 'need')",
             name="ck_query_category",
         ),
+        CheckConstraint(
+            "intent_type IN ('recommendation', 'verification')",
+            name="ck_query_intent_type",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
@@ -66,6 +71,8 @@ class Query(Base):
     category: Mapped[str] = mapped_column(String(20), index=True)
     reason: Mapped[str] = mapped_column(String(300))
     priority: Mapped[int] = mapped_column(Integer, default=2)
+    intent_type: Mapped[str] = mapped_column(String(20), default="recommendation")
+    fact_keys: Mapped[list[str]] = mapped_column(JSON, default=list)
     review_status: Mapped[str] = mapped_column(String(20), default="pending")
     is_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

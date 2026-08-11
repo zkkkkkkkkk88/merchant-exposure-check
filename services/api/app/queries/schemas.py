@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 QueryCategory = Literal["geo", "category", "product", "price", "occasion", "need"]
+QueryIntent = Literal["recommendation", "verification"]
 
 
 class QueryDraft(BaseModel):
@@ -14,6 +15,8 @@ class QueryDraft(BaseModel):
     category: QueryCategory
     reason: str = Field(min_length=2, max_length=300)
     priority: int = Field(ge=1, le=5)
+    intent_type: QueryIntent = "recommendation"
+    fact_keys: list[str] = Field(default_factory=list)
 
 
 ReviewStatus = Literal["pending", "approved", "rejected"]
@@ -39,6 +42,8 @@ class QueryRead(BaseModel):
     category: QueryCategory
     reason: str
     priority: int
+    intent_type: QueryIntent
+    fact_keys: list[str]
     review_status: ReviewStatus
     is_enabled: bool
     created_at: datetime
