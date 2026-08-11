@@ -151,6 +151,7 @@ tbody th { font-weight: 600; }
 .save-state { display: block; font-size: 10px; font-weight: 400; margin-top: 5px; }
 .save-saving { color: var(--muted); }
 .save-saved { color: #37735b; }
+.run-actions { display: flex; gap: 14px; }
 .scan-count { color: var(--muted); font-size: 11px; margin: 22px 0 8px; text-align: right; }
 .query-workspace table { min-width: 940px; }
 .query-workspace tbody th { width: 34%; }

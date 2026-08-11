@@ -8,7 +8,8 @@ it("renders scan states and expandable raw evidence", () => {
   render(<ScanProgress status="partial" successCount={5} failureCount={1} totalCount={6} />);
   expect(screen.getByText("部分完成")).toBeVisible();
   expect(screen.getByText("5 / 6")).toBeVisible();
-  expect(screen.getByRole("button", { name: "重试 1 条失败问题" })).toBeEnabled();
+  expect(screen.getByText("1 条失败，本次结果已保存")).toBeVisible();
+  expect(screen.queryByRole("button", { name: /重试/ })).not.toBeInTheDocument();
 
   render(<EvidenceDrawer question="适合约会的餐厅？" rawText="首位推荐 O'eat。" uncertainty="uncertain" sources={["https://example.com"]} />);
   fireEvent.click(screen.getByRole("button", { name: "查看原始证据" }));

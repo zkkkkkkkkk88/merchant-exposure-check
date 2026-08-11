@@ -110,6 +110,25 @@ it("renders raw scan evidence returned by the API", async () => {
   render(await ScanPage({ params: Promise.resolve({ id: "scan-real" }) }));
   expect(screen.getByText("真实检测问题")).toBeVisible();
   expect(screen.queryByText(/钱江新城/)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "查看分析报告" })).toHaveAttribute("href", "/reports/scan-real");
+});
+
+it("keeps a queued scan in the background without exposing a premature report", async () => {
+  vi.mocked(getScanRun).mockResolvedValue({
+    ...realRun,
+    status: "queued",
+    success_count: 0,
+    finished_at: null,
+    results: [],
+  });
+  vi.mocked(getMerchant).mockResolvedValue(realMerchant);
+  vi.mocked(getQuerySets).mockResolvedValue([{ id: "queries-real", merchant_id: "merchant-real", version: 1, generator_name: "template-v1", created_at: "2026-08-11T00:00:00Z", queries: [{ id: "query-real", query_set_id: "queries-real", text: "真实检测问题", category: "geo", reason: "真实问题库", priority: 1, review_status: "approved", is_enabled: true, created_at: "2026-08-11T00:00:00Z", updated_at: "2026-08-11T00:00:00Z" }] }]);
+
+  render(await ScanPage({ params: Promise.resolve({ id: "scan-real" }) }));
+
+  expect(screen.getByText("等待执行")).toBeVisible();
+  expect(screen.getByText("0 / 1")).toBeVisible();
+  expect(screen.queryByRole("link", { name: "查看分析报告" })).not.toBeInTheDocument();
 });
 
 it("renders report metrics returned by the API", async () => {
@@ -159,4 +178,5 @@ it("renders scan runs returned by the API instead of fixed demo runs", async () 
     "/scans/scan-real",
   );
   expect(screen.queryByText("18 / 20")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "报告" })).toHaveAttribute("href", "/reports/scan-real");
 });
