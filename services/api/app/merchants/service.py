@@ -3,8 +3,15 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.merchants.models import Merchant, MerchantSource
-from app.merchants.schemas import MerchantCreate, MerchantSourceCreate, MerchantUpdate
+from app.merchants.models import Merchant, MerchantProfileFact, MerchantSource
+from app.merchants.schemas import (
+    MerchantCreate,
+    MerchantProfileFactRead,
+    MerchantProfileRead,
+    MerchantProfileWrite,
+    MerchantSourceCreate,
+    MerchantUpdate,
+)
 
 
 def normalize_text(value: str) -> str:
@@ -77,3 +84,55 @@ class MerchantService:
         session.commit()
         session.refresh(merchant)
         return merchant
+
+    @staticmethod
+    def get_profile(session: Session, merchant_id: UUID) -> MerchantProfileRead:
+        merchant = MerchantService.get(session, merchant_id)
+        if merchant is None:
+            raise MerchantNotFoundError(str(merchant_id))
+
+        stored = {
+            fact.field_key: MerchantProfileFactRead.model_validate(fact)
+            for fact in merchant.profile_facts
+        }
+        candidates: dict[str, object | None] = {
+            "location.city": merchant.city,
+            "location.district": merchant.district,
+            "category.legacy": merchant.industry,
+            "location.address": merchant.address,
+            "price.display": merchant.price_range,
+            "hours.display": merchant.opening_hours,
+            "product.list": merchant.products or None,
+            "strength.list": merchant.strengths or None,
+        }
+        for field_key, value in candidates.items():
+            if value is not None and field_key not in stored:
+                stored[field_key] = MerchantProfileFactRead(
+                    field_key=field_key,
+                    value=value,
+                    confirmation_status="pending",
+                )
+        return MerchantProfileRead(merchant_id=merchant.id, facts=list(stored.values()))
+
+    @staticmethod
+    def replace_profile(
+        session: Session,
+        merchant_id: UUID,
+        payload: MerchantProfileWrite,
+    ) -> MerchantProfileRead:
+        merchant = MerchantService.get(session, merchant_id)
+        if merchant is None:
+            raise MerchantNotFoundError(str(merchant_id))
+        merchant.profile_facts = [
+            MerchantProfileFact(
+                field_key=fact.field_key,
+                value=fact.value,
+                confirmation_status=fact.confirmation_status,
+                confidence=fact.confidence,
+                source_urls=[str(url) for url in fact.source_urls],
+            )
+            for fact in payload.facts
+        ]
+        session.commit()
+        session.refresh(merchant)
+        return MerchantService.get_profile(session, merchant_id)

@@ -5,7 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.merchants.schemas import MerchantCreate, MerchantRead, MerchantUpdate
+from app.merchants.schemas import (
+    MerchantCreate,
+    MerchantProfileRead,
+    MerchantProfileWrite,
+    MerchantRead,
+    MerchantUpdate,
+)
 from app.merchants.service import MerchantNotFoundError, MerchantService
 
 router = APIRouter(prefix="/merchants", tags=["merchants"])
@@ -47,3 +53,23 @@ def update_merchant(
     except MerchantNotFoundError as error:
         raise HTTPException(status_code=404, detail="Merchant not found") from error
     return MerchantRead.model_validate(merchant)
+
+
+@router.get("/{merchant_id}/profile", response_model=MerchantProfileRead)
+def get_merchant_profile(merchant_id: UUID, session: SessionDep) -> MerchantProfileRead:
+    try:
+        return MerchantService.get_profile(session, merchant_id)
+    except MerchantNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Merchant not found") from error
+
+
+@router.put("/{merchant_id}/profile", response_model=MerchantProfileRead)
+def replace_merchant_profile(
+    merchant_id: UUID,
+    payload: MerchantProfileWrite,
+    session: SessionDep,
+) -> MerchantProfileRead:
+    try:
+        return MerchantService.replace_profile(session, merchant_id, payload)
+    except MerchantNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Merchant not found") from error

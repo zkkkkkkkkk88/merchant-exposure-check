@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -38,6 +38,11 @@ class Merchant(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    profile_facts: Mapped[list[MerchantProfileFact]] = relationship(
+        back_populates="merchant",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
 
 
 class MerchantSource(Base):
@@ -54,3 +59,26 @@ class MerchantSource(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     merchant: Mapped[Merchant] = relationship(back_populates="sources")
+
+
+class MerchantProfileFact(Base):
+    __tablename__ = "merchant_profile_facts"
+    __table_args__ = (
+        UniqueConstraint("merchant_id", "field_key", name="uq_merchant_profile_field"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    merchant_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("merchants.id", ondelete="CASCADE"), index=True
+    )
+    field_key: Mapped[str] = mapped_column(String(100), index=True)
+    value: Mapped[object] = mapped_column(JSON)
+    confirmation_status: Mapped[str] = mapped_column(String(20), default="pending")
+    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
+    source_urls: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+
+    merchant: Mapped[Merchant] = relationship(back_populates="profile_facts")
