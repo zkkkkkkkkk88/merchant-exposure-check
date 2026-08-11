@@ -51,7 +51,12 @@ def get_dashboard(merchant_id: UUID, session: SessionDep) -> DashboardRead:
         lastRunAt=run.finished_at or run.created_at,
         metrics={
             "mentionRate": metrics.mention_rate,
-            "firstPositionRate": metrics.first_position_rate,
+            "visibilityStage": metrics.visibility_stage,
+            "readinessScore": metrics.readiness_score,
+            "profileCompleteness": metrics.profile_completeness,
+            "publicVerifiability": metrics.public_verifiability,
+            "highIntentHitRate": metrics.high_intent_hit_rate,
+            "competitorGapClosure": metrics.competitor_gap_closure,
             "sourceCoverageRate": metrics.source_coverage_rate,
             "validQueryCount": metrics.valid_query_count,
             "totalQueryCount": metrics.total_query_count,
@@ -68,7 +73,6 @@ def get_dashboard(merchant_id: UUID, session: SessionDep) -> DashboardRead:
             {
                 "name": name,
                 "mentions": count,
-                "firstPositions": 0,
                 "sourceCount": 0,
             }
             for name, count in metrics.competitor_counts.items()

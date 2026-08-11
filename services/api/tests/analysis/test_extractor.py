@@ -33,3 +33,14 @@ def test_target_extractor_recognizes_numbered_brand_mention() -> None:
     assert payload.has_explicit_ranking is True
     assert payload.mentions[0].raw_name == "O'eat Gastronomy"
     assert payload.mentions[0].position == 1
+    assert payload.is_recommended is True
+
+
+def test_target_extractor_does_not_treat_negative_context_as_recommendation() -> None:
+    payload = extract_target_mention(
+        "O'eat Gastronomy 暂不推荐，因为公开信息不足。",
+        target_names=["O'eat Gastronomy"],
+    )
+
+    assert payload.mentions
+    assert payload.is_recommended is False

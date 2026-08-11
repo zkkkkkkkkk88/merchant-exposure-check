@@ -50,7 +50,7 @@ class ManualCheckRead(BaseModel):
 class DashboardRead(BaseModel):
     merchant: dict[str, str | None]
     lastRunAt: datetime
-    metrics: dict[str, Decimal | int]
+    metrics: dict[str, Decimal | int | str]
     trend: list[dict[str, str | Decimal]]
     categories: list[dict[str, str | Decimal | int]]
     competitors: list[dict[str, str | int]]

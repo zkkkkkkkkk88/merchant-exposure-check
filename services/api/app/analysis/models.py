@@ -33,6 +33,7 @@ class ResultAnalysis(Base):
     )
     is_valid: Mapped[bool] = mapped_column(Boolean)
     has_explicit_ranking: Mapped[bool] = mapped_column(Boolean)
+    is_recommended: Mapped[bool] = mapped_column(Boolean, default=False)
     confidence: Mapped[float] = mapped_column(Float)
     extraction_version: Mapped[str] = mapped_column(String(40), default="heuristic-v1")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)

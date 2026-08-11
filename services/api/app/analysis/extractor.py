@@ -45,9 +45,17 @@ def extract_target_mention(
         raw_text,
     )
     position = int(position_match.group(1)) if position_match else None
+    negative_recommendation = re.search(
+        r"(?:暂不|不建议|不予|未被|没有).{0,6}(?:推荐|选择)",
+        raw_text,
+    )
+    positive_recommendation = position is not None or bool(
+        re.search(r"(?:推荐|适合|值得|首选)", raw_text)
+    )
     return ExtractionPayload(
         is_valid=True,
         has_explicit_ranking=position is not None,
+        is_recommended=positive_recommendation and negative_recommendation is None,
         confidence=0.85,
         mentions=[
             ExtractedMention(

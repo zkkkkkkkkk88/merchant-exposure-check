@@ -11,6 +11,18 @@ class RestaurantProfile:
 
 class RestaurantRulePack:
     name = "restaurant-v2"
+    required_fact_keys = frozenset(
+        {
+            "location.city",
+            "category.precise",
+            "location.venue",
+            "price.display",
+            "product.list",
+            "occasion.list",
+            "need.transport",
+            "service.baby_chair",
+        }
+    )
 
     def generate(self, profile: RestaurantProfile, count: int) -> list[QueryDraft]:
         if count < 6 or count > 100:
@@ -159,4 +171,3 @@ class RestaurantRulePack:
     def _text(facts: dict[str, object], key: str) -> str | None:
         value = facts.get(key)
         return value.strip() if isinstance(value, str) and value.strip() else None
-

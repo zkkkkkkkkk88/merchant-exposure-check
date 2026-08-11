@@ -8,6 +8,7 @@ from app.db.session import SessionLocal
 from app.merchants.models import Merchant
 from app.merchants.schemas import MerchantCreate, MerchantSourceCreate
 from app.merchants.service import MerchantService
+from app.queries.generator import TemplateQueryGenerator
 from app.queries.models import QuerySet
 from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
@@ -56,7 +57,12 @@ def seed_demo(session: Session) -> SeedResult:
         .limit(1)
     )
     if query_set is None:
-        query_set = QueryLibraryService.generate(session, merchant.id, count=30)
+        query_set = QueryLibraryService.generate(
+            session,
+            merchant.id,
+            count=30,
+            generator=TemplateQueryGenerator(),
+        )
         for query in query_set.queries:
             QueryLibraryService.update_query(
                 session,

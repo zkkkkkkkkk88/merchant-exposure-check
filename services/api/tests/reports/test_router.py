@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.main import app
-from app.merchants.schemas import MerchantCreate
+from app.merchants.schemas import (
+    MerchantCreate,
+    MerchantProfileFactWrite,
+    MerchantProfileWrite,
+)
 from app.merchants.service import MerchantService
 from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
@@ -33,6 +37,24 @@ def create_manual_scan(db_session: Session, raw_text: str):
             branch_name="杭州万象城店",
             city="杭州",
             industry="餐饮",
+        ),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(
+            facts=[
+                MerchantProfileFactWrite(
+                    field_key="location.city",
+                    value="杭州",
+                    confirmation_status="confirmed",
+                ),
+                MerchantProfileFactWrite(
+                    field_key="category.precise",
+                    value="西餐厅",
+                    confirmation_status="confirmed",
+                ),
+            ]
         ),
     )
     query_set = QueryLibraryService.generate(db_session, merchant.id, count=6)
@@ -72,11 +94,14 @@ def test_report_calculates_target_mention_and_accepts_manual_check(
 
     assert report.status_code == 200
     assert float(report.json()["metrics"]["mention_rate"]) == 1.0
-    assert float(report.json()["metrics"]["first_position_rate"]) == 1.0
+    assert report.json()["metrics"]["visibility_stage"] == "recommended"
+    assert "first_position_rate" not in report.json()["metrics"]
 
     dashboard = client.get(f"/merchants/{merchant.id}/dashboard")
     assert dashboard.status_code == 200
     assert float(dashboard.json()["metrics"]["mentionRate"]) == 1.0
+    assert dashboard.json()["metrics"]["visibilityStage"] == "recommended"
+    assert "firstPositionRate" not in dashboard.json()["metrics"]
     assert dashboard.json()["merchant"]["name"] == "O'eat Gastronomy"
 
     checked = client.post(
@@ -128,3 +153,4 @@ def test_history_returns_metric_delta(client: TestClient, db_session: Session) -
 
     assert response.status_code == 200
     assert float(response.json()["deltas"]["mention_rate"]) == -1.0
+    assert "first_position_rate" not in response.json()["deltas"]

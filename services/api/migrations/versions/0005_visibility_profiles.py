@@ -45,9 +45,14 @@ def upgrade() -> None:
         "queries",
         sa.Column("fact_keys", sa.JSON(), nullable=False, server_default="[]"),
     )
+    op.add_column(
+        "result_analyses",
+        sa.Column("is_recommended", sa.Boolean(), nullable=False, server_default=sa.false()),
+    )
 
 
 def downgrade() -> None:
+    op.drop_column("result_analyses", "is_recommended")
     op.drop_column("queries", "fact_keys")
     op.drop_column("queries", "intent_type")
     op.drop_index("ix_merchant_profile_facts_field_key", table_name="merchant_profile_facts")

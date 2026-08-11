@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import Settings
 from app.merchants.schemas import MerchantCreate
 from app.merchants.service import MerchantService
+from app.queries.generator import TemplateQueryGenerator
 from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
 from app.scans.adapters.base import (
@@ -63,7 +64,12 @@ def create_approved_scan(db_session: Session, query_count: int) -> ScanRun:
         db_session,
         MerchantCreate(name="测试餐厅", city="杭州", industry="餐饮"),
     )
-    query_set = QueryLibraryService.generate(db_session, merchant.id, count=6)
+    query_set = QueryLibraryService.generate(
+        db_session,
+        merchant.id,
+        count=6,
+        generator=TemplateQueryGenerator(),
+    )
     for query in query_set.queries[:query_count]:
         QueryLibraryService.update_query(
             db_session,

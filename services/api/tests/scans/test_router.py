@@ -9,6 +9,7 @@ from app.db.session import get_session
 from app.main import app
 from app.merchants.schemas import MerchantCreate
 from app.merchants.service import MerchantService
+from app.queries.generator import TemplateQueryGenerator
 from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
 
@@ -29,7 +30,12 @@ def create_approved_query_set(db_session: Session):
         db_session,
         MerchantCreate(name="测试餐厅", city="杭州", industry="餐饮"),
     )
-    query_set = QueryLibraryService.generate(db_session, merchant.id, count=6)
+    query_set = QueryLibraryService.generate(
+        db_session,
+        merchant.id,
+        count=6,
+        generator=TemplateQueryGenerator(),
+    )
     approved = query_set.queries[0]
     QueryLibraryService.update_query(
         db_session,

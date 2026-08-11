@@ -8,7 +8,10 @@ from app.analysis.contracts import MetricSnapshot
 from app.analysis.metrics import calculate_metrics
 from app.analysis.service import AnalysisService
 from app.merchants.models import Merchant
+from app.merchants.profile import confirmed_fact_map
+from app.merchants.service import MerchantService
 from app.queries.models import Query
+from app.queries.rules.restaurant import RestaurantRulePack
 from app.reports.models import ManualCheck
 from app.reports.schemas import ManualCheckCreate
 from app.scans.models import ScanRun
@@ -26,7 +29,15 @@ class ReportService:
             analysis = AnalysisService.ensure_result(session, result, merchant)
             analyzed.append(AnalysisService.to_metric_result(session, result, analysis))
         session.commit()
-        return calculate_metrics(analyzed, merchant.id)
+        confirmed_fields = set(
+            confirmed_fact_map(MerchantService.get_profile(session, merchant_id).facts)
+        )
+        return calculate_metrics(
+            analyzed,
+            merchant.id,
+            confirmed_profile_fields=confirmed_fields,
+            required_profile_fields=RestaurantRulePack.required_fact_keys,
+        )
 
     @staticmethod
     def compare(
@@ -36,7 +47,11 @@ class ReportService:
         right = ReportService.metrics(session, merchant_id, right_id)
         fields = (
             "mention_rate",
-            "first_position_rate",
+            "profile_completeness",
+            "public_verifiability",
+            "high_intent_hit_rate",
+            "competitor_gap_closure",
+            "readiness_score",
             "task_valid_rate",
             "source_coverage_rate",
         )

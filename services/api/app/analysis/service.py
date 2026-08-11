@@ -30,6 +30,7 @@ class AnalysisService:
             query_result_id=result.id,
             is_valid=result.status == "success" and payload.is_valid,
             has_explicit_ranking=payload.has_explicit_ranking,
+            is_recommended=payload.is_recommended,
             confidence=payload.confidence,
         )
         for mention in payload.mentions:
@@ -59,8 +60,10 @@ class AnalysisService:
         return AnalyzedQueryResult(
             query_id=result.query_id,
             category=query.category,
+            intent_type=query.intent_type,
+            fact_keys=query.fact_keys,
             is_valid=analysis.is_valid,
-            has_explicit_ranking=analysis.has_explicit_ranking,
+            is_recommended=analysis.is_recommended,
             mentions=[
                 MetricMention(
                     brand_id=mention.brand_id,

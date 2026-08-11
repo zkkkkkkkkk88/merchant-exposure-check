@@ -3,7 +3,9 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.queries.schemas import QueryCategory
+from typing import Literal
+
+from app.queries.schemas import QueryCategory, QueryIntent
 
 
 class ExtractedMention(BaseModel):
@@ -31,6 +33,7 @@ class ExtractionPayload(BaseModel):
 
     is_valid: bool
     has_explicit_ranking: bool
+    is_recommended: bool = False
     confidence: float = Field(ge=0, le=1)
     mentions: list[ExtractedMention] = Field(default_factory=list)
     facts: list[ExtractedFact] = Field(default_factory=list)
@@ -49,8 +52,10 @@ class AnalyzedQueryResult(BaseModel):
 
     query_id: UUID
     category: QueryCategory
+    intent_type: QueryIntent = "recommendation"
+    fact_keys: list[str] = Field(default_factory=list)
     is_valid: bool
-    has_explicit_ranking: bool
+    is_recommended: bool = False
     mentions: list[MetricMention]
     target_source_domains: set[str] = Field(default_factory=set)
     confirmed_target_fields: set[str] = Field(default_factory=set)
@@ -62,7 +67,12 @@ class MetricSnapshot(BaseModel):
     total_query_count: int
     valid_query_count: int
     mention_rate: Decimal
-    first_position_rate: Decimal
+    visibility_stage: Literal["unrecognized", "relevant", "mentioned", "recommended"]
+    profile_completeness: Decimal
+    public_verifiability: Decimal
+    high_intent_hit_rate: Decimal
+    competitor_gap_closure: Decimal
+    readiness_score: Decimal
     task_valid_rate: Decimal
     source_coverage_rate: Decimal
     independent_source_count: int
