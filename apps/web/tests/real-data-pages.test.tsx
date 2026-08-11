@@ -10,6 +10,7 @@ import ScanPage from "@/app/scans/[id]/page";
 import ScansPage from "@/app/scans/page";
 import {
   getMerchant,
+  getMerchantProfile,
   getMerchants,
   getHistory,
   getQuerySets,
@@ -19,12 +20,14 @@ import {
 } from "@/lib/api";
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/",
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
 }));
 
 vi.mock("@/lib/api", () => ({
   getMerchants: vi.fn(),
   getMerchant: vi.fn(),
+  getMerchantProfile: vi.fn(),
   getQuerySets: vi.fn(),
   getScanRun: vi.fn(),
   getScanRuns: vi.fn(),
@@ -90,9 +93,10 @@ const realRun = {
 
 it("renders a merchant profile from the API", async () => {
   vi.mocked(getMerchant).mockResolvedValue(realMerchant);
+  vi.mocked(getMerchantProfile).mockResolvedValue({ merchant_id: "merchant-real", facts: [] });
   render(await MerchantPage({ params: Promise.resolve({ id: "merchant-real" }) }));
   expect(screen.getByRole("heading", { name: "真实餐馆" })).toBeVisible();
-  expect(screen.getByRole("link", { name: /merchant.example/ })).toBeVisible();
+  expect(screen.getByRole("textbox", { name: "粘贴商家公开资料" })).toBeVisible();
   expect(screen.queryByText(/300–500/)).not.toBeInTheDocument();
 });
 
@@ -134,9 +138,9 @@ it("keeps a queued scan in the background without exposing a premature report", 
 it("renders report metrics returned by the API", async () => {
   vi.mocked(getScanRun).mockResolvedValue(realRun);
   vi.mocked(getMerchant).mockResolvedValue(realMerchant);
-  vi.mocked(getReport).mockResolvedValue({ merchant_id: "merchant-real", scan_run_id: "scan-real", metrics: { total_query_count: 1, valid_query_count: 1, mention_rate: "0", first_position_rate: "0", task_valid_rate: "1", source_coverage_rate: "0", independent_source_count: 0, category_coverage: { geo: "0" }, competitor_counts: {}, confirmed_target_fields: [] }, findings: [] });
+  vi.mocked(getReport).mockResolvedValue({ merchant_id: "merchant-real", scan_run_id: "scan-real", metrics: { total_query_count: 1, valid_query_count: 1, mention_rate: "0", visibility_stage: "unrecognized", profile_completeness: "0", public_verifiability: "0", high_intent_hit_rate: "0", competitor_gap_closure: "0", readiness_score: "0", task_valid_rate: "1", source_coverage_rate: "0", independent_source_count: 0, category_coverage: { geo: "0" }, competitor_counts: {}, confirmed_target_fields: [] }, findings: [] });
   render(await ReportPage({ params: Promise.resolve({ scanId: "scan-real" }) }));
-  expect(screen.getByText("1/1")).toBeVisible();
+  expect(screen.getByText(/1\/1 个有效问题/)).toBeVisible();
   expect(screen.queryByText(/营业时间与价格区间/)).not.toBeInTheDocument();
 });
 

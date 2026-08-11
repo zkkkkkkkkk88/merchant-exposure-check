@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import "../styles/globals.css";
 
 export const metadata: Metadata = {
-  title: "曝光志 · 商家公开信息检测",
+  title: "见序 · Visibility Dossier",
   description: "证据可追溯的公开信息检测工作台",
 };
 

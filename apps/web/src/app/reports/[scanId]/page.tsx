@@ -15,10 +15,10 @@ export default async function ReportPage({ params }: { params: Promise<{ scanId:
     <AppShell>
       <div className="workspace-page">
         <header className="page-header">
-          <div><p className="kicker">EVIDENCE REPORT / {scanId}</p><h1>曝光分析报告</h1><p>{merchant?.name ?? "未知商家"} · {new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date(run.finished_at ?? run.created_at))}</p></div>
+          <div><p className="kicker">VISIBILITY DOSSIER / {scanId}</p><h1>可见性诊断报告</h1><p>{merchant?.name ?? "未知商家"} · {new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" }).format(new Date(run.finished_at ?? run.created_at))}</p></div>
           <Link className="button secondary" href={`/scans/${scanId}`}>返回原始结果</Link>
         </header>
-        <MetricStrip metrics={{ mentionRate: Number(metrics.mention_rate), firstPositionRate: Number(metrics.first_position_rate), sourceCoverageRate: Number(metrics.source_coverage_rate), validQueryCount: metrics.valid_query_count, totalQueryCount: metrics.total_query_count }} />
+        <MetricStrip metrics={{ mentionRate: Number(metrics.mention_rate), visibilityStage: metrics.visibility_stage, readinessScore: Number(metrics.readiness_score), profileCompleteness: Number(metrics.profile_completeness), publicVerifiability: Number(metrics.public_verifiability), highIntentHitRate: Number(metrics.high_intent_hit_rate), competitorGapClosure: Number(metrics.competitor_gap_closure), sourceCoverageRate: Number(metrics.source_coverage_rate), validQueryCount: metrics.valid_query_count, totalQueryCount: metrics.total_query_count }} />
         <div className="report-sections">
           <section>
             <p className="kicker">EVIDENCE FINDINGS</p><h2>基于本次扫描的发现</h2>

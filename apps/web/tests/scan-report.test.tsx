@@ -18,7 +18,8 @@ it("renders scan states and expandable raw evidence", () => {
 });
 
 it("shows historical deltas without causal claims", () => {
-  render(<HistoryComparison leftLabel="7月检测" rightLabel="8月检测" deltas={{ mentionRate: 0.12, firstPositionRate: -0.04 }} />);
+  render(<HistoryComparison leftLabel="7月检测" rightLabel="8月检测" deltas={{ readinessScore: 8, profileCompleteness: 0.12, publicVerifiability: -0.04, highIntentHitRate: 0.1, competitorGapClosure: 0.05 }} />);
+  expect(screen.getByText("+8 分")).toBeVisible();
   expect(screen.getByText("+12 个百分点")).toBeVisible();
   expect(screen.getByText("-4 个百分点")).toBeVisible();
   expect(screen.queryByText(/导致|归因/)).not.toBeInTheDocument();
