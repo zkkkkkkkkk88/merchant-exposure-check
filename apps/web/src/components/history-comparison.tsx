@@ -1,0 +1,4 @@
+export function HistoryComparison({ leftLabel, rightLabel, deltas }: { leftLabel: string; rightLabel: string; deltas: { mentionRate: number; firstPositionRate: number } }) {
+  const format = (value: number) => `${value >= 0 ? "+" : ""}${Math.round(value * 100)} 个百分点`;
+  return <section className="history-comparison" aria-labelledby="history-title"><div className="section-heading"><div><p className="kicker">PERIOD COMPARISON</p><h2 id="history-title">检测结果变化</h2></div></div><div className="comparison-head"><span>{leftLabel}</span><span>→</span><span>{rightLabel}</span></div><dl><div><dt>品牌出现率</dt><dd className={deltas.mentionRate >= 0 ? "delta-up" : "delta-down"}>{format(deltas.mentionRate)}</dd></div><div><dt>首位推荐率</dt><dd className={deltas.firstPositionRate >= 0 ? "delta-up" : "delta-down"}>{format(deltas.firstPositionRate)}</dd></div></dl><p className="method-copy">差值仅描述两次检测样本的变化，不推断变化原因。</p></section>;
+}

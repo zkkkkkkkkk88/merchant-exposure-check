@@ -1,2 +1,13 @@
 .worktrees/
+.env
+.next/
+.pytest_cache/
+.venv/
+__pycache__/
+*.egg-info/
+*.pyc
+node_modules/
+test-results/
+playwright-report/
+demo-e2e.db
 
