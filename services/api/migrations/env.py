@@ -7,6 +7,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.merchants import models as merchant_models  # noqa: F401
 from app.queries import models as query_models  # noqa: F401
+from app.scans import models as scan_models  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database_url)
