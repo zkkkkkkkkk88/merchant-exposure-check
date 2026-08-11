@@ -1,4 +1,5 @@
 .worktrees/
+.superpowers/
 .env
 .next/
 .pytest_cache/
