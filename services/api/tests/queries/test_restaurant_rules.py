@@ -51,3 +51,9 @@ def test_unconfirmed_service_is_not_included() -> None:
     assert all("宝宝" not in draft.text for draft in drafts)
     assert all("baby_chair" not in draft.fact_keys for draft in drafts)
 
+
+def test_small_query_set_keeps_price_and_verification_coverage() -> None:
+    drafts = RestaurantRulePack().generate(oeat_profile(), count=12)
+
+    assert any(draft.category == "price" and "300–450" in draft.text for draft in drafts)
+    assert any(draft.intent_type == "verification" for draft in drafts)

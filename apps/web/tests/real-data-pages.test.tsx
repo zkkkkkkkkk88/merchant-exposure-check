@@ -101,10 +101,13 @@ it("renders a merchant profile from the API", async () => {
 });
 
 it("renders the latest real query set", async () => {
-  vi.mocked(getQuerySets).mockResolvedValue([{ id: "queries-real", merchant_id: "merchant-real", version: 1, generator_name: "template-v1", created_at: "2026-08-11T00:00:00Z", queries: [{ id: "query-real", query_set_id: "queries-real", text: "真实检测问题", category: "geo", reason: "真实问题库", priority: 1, review_status: "approved", is_enabled: true, created_at: "2026-08-11T00:00:00Z", updated_at: "2026-08-11T00:00:00Z" }] }]);
+  vi.mocked(getQuerySets).mockResolvedValue([
+    { id: "queries-new", merchant_id: "merchant-real", version: 2, generator_name: "restaurant-v2", created_at: "2026-08-11T01:00:00Z", queries: [{ id: "query-new", query_set_id: "queries-new", text: "杭州万象城西餐厅推荐", category: "geo", reason: "精准问题库", priority: 1, review_status: "pending", is_enabled: true, created_at: "2026-08-11T01:00:00Z", updated_at: "2026-08-11T01:00:00Z" }] },
+    { id: "queries-old", merchant_id: "merchant-real", version: 1, generator_name: "template-v1", created_at: "2026-08-11T00:00:00Z", queries: [{ id: "query-old", query_set_id: "queries-old", text: "杭州50元以内的餐饮有哪些？", category: "price", reason: "旧问题库", priority: 1, review_status: "approved", is_enabled: true, created_at: "2026-08-11T00:00:00Z", updated_at: "2026-08-11T00:00:00Z" }] },
+  ]);
   render(await QueriesPage({ searchParams: Promise.resolve({ merchant: "merchant-real" }) }));
-  expect(screen.getByDisplayValue("真实检测问题")).toBeVisible();
-  expect(screen.queryByDisplayValue(/约会的西餐厅/)).not.toBeInTheDocument();
+  expect(screen.getByDisplayValue("杭州万象城西餐厅推荐")).toBeVisible();
+  expect(screen.queryByDisplayValue("杭州50元以内的餐饮有哪些？")).not.toBeInTheDocument();
 });
 
 it("renders raw scan evidence returned by the API", async () => {

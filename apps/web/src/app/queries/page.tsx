@@ -13,7 +13,7 @@ export default async function QueriesPage({ searchParams = Promise.resolve({}) }
     ? (params.category ?? "all") as "all" | "geo" | "category" | "product" | "price" | "occasion" | "need"
     : "all";
   const querySets = merchantId ? await getQuerySets(merchantId) : [];
-  const latest = querySets.at(-1);
+  const latest = querySets[0];
   const queries = latest?.queries.map((query) => ({ id: query.id, text: query.text, category: query.category, reason: query.reason, priority: query.priority, reviewStatus: query.review_status, isEnabled: query.is_enabled, intentType: query.intent_type ?? "recommendation" })) ?? [];
   return (
     <AppShell>

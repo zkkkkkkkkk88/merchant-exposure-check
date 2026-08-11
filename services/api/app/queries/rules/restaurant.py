@@ -165,7 +165,18 @@ class RestaurantRulePack:
                 if index > 100:
                     raise ValueError("not enough confirmed profile facts to generate unique queries")
 
-        return drafts[:count]
+        first_by_intent_and_category: list[QueryDraft] = []
+        remaining: list[QueryDraft] = []
+        covered: set[tuple[str, str]] = set()
+        for draft in drafts:
+            bucket = (draft.intent_type, draft.category)
+            if bucket in covered:
+                remaining.append(draft)
+                continue
+            covered.add(bucket)
+            first_by_intent_and_category.append(draft)
+
+        return (first_by_intent_and_category + remaining)[:count]
 
     @staticmethod
     def _text(facts: dict[str, object], key: str) -> str | None:
