@@ -13,11 +13,11 @@ it("validates and submits merchant data matching the API contract", async () => 
   fireEvent.change(screen.getByLabelText("商家名称"), { target: { value: "O'eat Gastronomy" } });
   fireEvent.change(screen.getByLabelText("城市"), { target: { value: "杭州" } });
   fireEvent.change(screen.getByLabelText("行业"), { target: { value: "餐饮" } });
-  fireEvent.change(screen.getByLabelText("公开来源 1"), { target: { value: "not-a-url" } });
+  fireEvent.change(screen.getByLabelText("公开来源 1（选填）"), { target: { value: "not-a-url" } });
   fireEvent.click(screen.getByRole("button", { name: "保存并生成问题" }));
   expect(await screen.findByText("请输入完整的公开来源网址")).toBeVisible();
 
-  fireEvent.change(screen.getByLabelText("公开来源 1"), { target: { value: "https://example.com/store" } });
+  fireEvent.change(screen.getByLabelText("公开来源 1（选填）"), { target: { value: "https://example.com/store" } });
   fireEvent.change(screen.getByLabelText("代表产品"), { target: { value: "季节套餐, 手工甜点" } });
   fireEvent.click(screen.getByRole("button", { name: "保存并生成问题" }));
 
@@ -29,6 +29,13 @@ it("validates and submits merchant data matching the API contract", async () => 
     products: ["季节套餐", "手工甜点"],
     sources: [{ kind: "other", url: "https://example.com/store", is_verified: false }],
   }));
+});
+
+it("makes clear that the public source can be left empty", () => {
+  render(<MerchantForm onSubmit={vi.fn()} />);
+
+  expect(screen.getByRole("textbox", { name: "公开来源 1（选填）" })).toBeVisible();
+  expect(screen.getByText(/没有可复制链接时可以留空/)).toBeVisible();
 });
 
 it("shows a safe server error", async () => {

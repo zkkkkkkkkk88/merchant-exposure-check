@@ -22,7 +22,7 @@ export default async function ReportPage({ params }: { params: Promise<{ scanId:
         <div className="report-sections">
           <section>
             <p className="kicker">EVIDENCE FINDINGS</p><h2>基于本次扫描的发现</h2>
-            {report.findings.length ? report.findings.map((finding, index) => <article className="finding-row" key={index}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{String(finding.title ?? "检测发现")}</strong><p>{String(finding.description ?? "")}</p></div></article>) : <p className="method-copy">本次扫描没有生成可确认的行动建议。</p>}
+            {report.findings.length ? report.findings.map((finding, index) => <article className="finding-row" key={index}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{String(finding.title ?? "检测发现")}</strong><p>{String(finding.description ?? "")}</p>{Array.isArray(finding.questions) && finding.questions.length ? <ul className="finding-questions">{finding.questions.map((question) => <li key={String(question)}>{String(question)}</li>)}</ul> : null}</div></article>) : <p className="method-copy">本次扫描没有生成可确认的行动建议。</p>}
           </section>
           <section><p className="kicker">BOUNDARY</p><h2>结论边界</h2><p className="method-copy">本报告来自真实联网回答，仅描述本次问题样本，不代表平台内部排名，也不补写缺少证据的事实。</p></section>
         </div>

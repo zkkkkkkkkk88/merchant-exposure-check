@@ -1,6 +1,12 @@
 from sqlalchemy.orm import Session
 
-from app.merchants.schemas import MerchantCreate, MerchantSourceCreate, MerchantUpdate
+from app.merchants.schemas import (
+    MerchantCreate,
+    MerchantProfileFactWrite,
+    MerchantProfileWrite,
+    MerchantSourceCreate,
+    MerchantUpdate,
+)
 from app.merchants.service import MerchantService
 
 
@@ -67,3 +73,92 @@ def test_update_replaces_supplied_fields_and_sources(db_session: Session) -> Non
     assert updated.normalized_name == "新名称"
     assert updated.products == ["早午餐"]
     assert [source.url for source in updated.sources] == ["https://example.com/new"]
+
+
+def test_replace_profile_can_update_existing_fact_values(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="测试门店", city="云南", industry="医疗"),
+    )
+    initial = MerchantProfileWrite(facts=[
+        MerchantProfileFactWrite(field_key="location.city", value="云南", confirmation_status="confirmed"),
+        MerchantProfileFactWrite(field_key="category.precise", value="口腔医疗机构", confirmation_status="confirmed"),
+    ])
+    MerchantService.replace_profile(db_session, merchant.id, initial)
+
+    updated = MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            initial.facts[0],
+            MerchantProfileFactWrite(field_key="category.precise", value="口腔门诊", confirmation_status="confirmed"),
+        ]),
+    )
+
+    facts = {fact.field_key: fact.value for fact in updated.facts}
+    assert facts["category.precise"] == "口腔门诊"
+    assert len([fact for fact in updated.facts if fact.field_key == "category.precise"]) == 1
+
+
+def test_create_enqueues_local_context_and_address_change_invalidates_it(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(
+            name="县城门诊",
+            city="云南",
+            district="普洱市",
+            industry="口腔医疗机构",
+            address="澜沧县勐朗镇东朗路1号",
+        ),
+    )
+
+    assert merchant.local_context.status == "pending"
+    merchant.local_context.status = "completed"
+    db_session.commit()
+
+    MerchantService.update(
+        db_session,
+        merchant.id,
+        MerchantUpdate(address="澜沧县勐朗镇东朗路2号"),
+    )
+
+    assert merchant.local_context.status == "pending"
+    assert merchant.local_context.county is None
+
+
+def test_non_address_update_keeps_completed_local_context(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="县城门诊", city="云南", industry="口腔医疗机构"),
+    )
+    merchant.local_context.status = "completed"
+    merchant.local_context.county = "澜沧县"
+    db_session.commit()
+
+    MerchantService.update(db_session, merchant.id, MerchantUpdate(opening_hours="09:00-18:00"))
+
+    assert merchant.local_context.status == "completed"
+    assert merchant.local_context.county == "澜沧县"
+
+
+def test_profile_address_change_invalidates_local_context(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="县城门诊", city="云南", industry="口腔医疗机构"),
+    )
+    merchant.local_context.status = "completed"
+    merchant.local_context.county = "澜沧县"
+    db_session.commit()
+
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="云南", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="location.address", value="澜沧县勐朗镇东朗路2号", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="口腔医疗机构", confirmation_status="confirmed"),
+        ]),
+    )
+
+    assert merchant.local_context.status == "pending"
+    assert merchant.local_context.county is None

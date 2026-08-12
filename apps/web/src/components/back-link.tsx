@@ -8,10 +8,7 @@ export function BackLink({ fallbackHref }: { fallbackHref: string }) {
     <button
       aria-label="返回"
       className="back-link"
-      onClick={() => {
-        if (window.history.length > 1) router.back();
-        else router.push(fallbackHref);
-      }}
+      onClick={() => router.push(fallbackHref)}
       type="button"
     >
       <span aria-hidden="true">←</span> 返回

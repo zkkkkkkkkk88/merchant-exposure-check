@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.merchants.models import Merchant, MerchantProfileFact, MerchantSource
+from app.merchants.models import Merchant, MerchantLocalContext, MerchantProfileFact, MerchantSource
 from app.merchants.profile import parse_restaurant_profile_text
 from app.merchants.schemas import (
     MerchantCreate,
@@ -49,6 +49,7 @@ class MerchantService:
             products=[normalize_text(item) for item in payload.products],
             strengths=[normalize_text(item) for item in payload.strengths],
             sources=[build_source(source) for source in payload.sources],
+            local_context=MerchantLocalContext(status="pending"),
         )
         session.add(merchant)
         session.commit()
@@ -71,6 +72,10 @@ class MerchantService:
             raise MerchantNotFoundError(str(merchant_id))
 
         values = payload.model_dump(exclude_unset=True, exclude={"sources"})
+        location_changed = any(
+            key in values and values[key] != getattr(merchant, key)
+            for key in ("city", "district", "address")
+        )
         for field, value in values.items():
             if field in {"products", "strengths"} and value is not None:
                 value = [normalize_text(item) for item in value]
@@ -82,6 +87,20 @@ class MerchantService:
             merchant.normalized_name = merchant.name.casefold()
         if payload.sources is not None:
             merchant.sources = [build_source(source) for source in payload.sources]
+        if location_changed:
+            context = merchant.local_context or MerchantLocalContext()
+            merchant.local_context = context
+            context.status = "pending"
+            context.province = None
+            context.city = None
+            context.county = None
+            context.township = None
+            context.normalized_address = None
+            context.landmarks = []
+            context.transport_options = []
+            context.source_urls = []
+            context.raw_summary = None
+            context.error_message = None
 
         session.commit()
         session.refresh(merchant)
@@ -125,16 +144,43 @@ class MerchantService:
         merchant = MerchantService.get(session, merchant_id)
         if merchant is None:
             raise MerchantNotFoundError(str(merchant_id))
-        merchant.profile_facts = [
-            MerchantProfileFact(
-                field_key=fact.field_key,
-                value=fact.value,
-                confirmation_status=fact.confirmation_status,
-                confidence=fact.confidence,
-                source_urls=[str(url) for url in fact.source_urls],
+        existing = {fact.field_key: fact for fact in merchant.profile_facts}
+        location_keys = {"location.city", "location.district", "location.address"}
+        location_changed = any(
+            fact.field_key in location_keys
+            and (
+                fact.field_key not in existing
+                or existing[fact.field_key].value != fact.value
             )
             for fact in payload.facts
-        ]
+        )
+        incoming_keys = {fact.field_key for fact in payload.facts}
+        for stored in list(merchant.profile_facts):
+            if stored.field_key not in incoming_keys:
+                session.delete(stored)
+        for fact in payload.facts:
+            stored = existing.get(fact.field_key)
+            if stored is None:
+                stored = MerchantProfileFact(field_key=fact.field_key)
+                merchant.profile_facts.append(stored)
+            stored.value = fact.value
+            stored.confirmation_status = fact.confirmation_status
+            stored.confidence = fact.confidence
+            stored.source_urls = [str(url) for url in fact.source_urls]
+        if location_changed:
+            context = merchant.local_context or MerchantLocalContext()
+            merchant.local_context = context
+            context.status = "pending"
+            context.province = None
+            context.city = None
+            context.county = None
+            context.township = None
+            context.normalized_address = None
+            context.landmarks = []
+            context.transport_options = []
+            context.source_urls = []
+            context.raw_summary = None
+            context.error_message = None
         session.commit()
         session.refresh(merchant)
         return MerchantService.get_profile(session, merchant_id)

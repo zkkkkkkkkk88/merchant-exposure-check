@@ -34,6 +34,16 @@ class QueryLibraryService:
 
         if generator is None:
             facts = confirmed_fact_map(MerchantService.get_profile(session, merchant_id).facts)
+            context = merchant.local_context
+            if context is not None and context.status == "completed":
+                scope = context.county or context.city or context.province
+                if scope:
+                    facts["location.city"] = scope
+                if context.county:
+                    facts.pop("location.district", None)
+                    facts.pop("location.venue", None)
+                elif context.city:
+                    facts.pop("location.district", None)
             rule_pack = RestaurantRulePack()
             try:
                 drafts = rule_pack.generate(

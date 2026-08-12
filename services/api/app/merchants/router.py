@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_session
 from app.merchants.schemas import (
     MerchantCreate,
+    MerchantLocalContextRead,
     MerchantProfileParseRequest,
     MerchantProfileRead,
     MerchantProfileWrite,
@@ -14,6 +15,7 @@ from app.merchants.schemas import (
     MerchantUpdate,
 )
 from app.merchants.service import MerchantNotFoundError, MerchantService
+from app.merchants.models import MerchantLocalContext
 
 router = APIRouter(prefix="/merchants", tags=["merchants"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -86,3 +88,24 @@ def parse_merchant_profile(
         return MerchantService.parse_profile(session, merchant_id, payload)
     except MerchantNotFoundError as error:
         raise HTTPException(status_code=404, detail="Merchant not found") from error
+
+
+@router.get("/{merchant_id}/local-context", response_model=MerchantLocalContextRead)
+def get_local_context(merchant_id: UUID, session: SessionDep) -> MerchantLocalContextRead:
+    context = session.get(MerchantLocalContext, merchant_id)
+    if context is None:
+        raise HTTPException(status_code=404, detail="Local context not found")
+    return MerchantLocalContextRead.model_validate(context)
+
+
+@router.post("/{merchant_id}/local-context/refresh", response_model=MerchantLocalContextRead)
+def refresh_local_context(merchant_id: UUID, session: SessionDep) -> MerchantLocalContextRead:
+    merchant = MerchantService.get(session, merchant_id)
+    if merchant is None:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+    context = merchant.local_context
+    context.status = "pending"
+    context.error_message = None
+    session.commit()
+    session.refresh(context)
+    return MerchantLocalContextRead.model_validate(context)

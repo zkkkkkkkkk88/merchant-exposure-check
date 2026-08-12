@@ -124,7 +124,24 @@ export interface MetricSnapshotData {
   source_coverage_rate: string | number;
   independent_source_count: number;
   category_coverage: Record<string, string | number>;
+  category_mentions: Record<string, number>;
+  category_totals: Record<string, number>;
   competitor_counts: Record<string, number>;
+  competitor_details: Array<{
+    name: string;
+    query_count: number;
+    categories: string[];
+    questions: string[];
+    sourceChannels: Array<{
+      domain: string;
+      citationCount: number;
+      access: "maintainable" | "submission" | "reference";
+      label: string;
+    }>;
+    reasons: string[];
+    source_count: number;
+  }>;
+  coverage_gaps: Record<string, string[]>;
   confirmed_target_fields: string[];
 }
 
@@ -156,11 +173,15 @@ export interface DashboardData {
     validQueryCount: number;
     totalQueryCount: number;
   };
-  trend: Array<{ label: string; target: number; benchmark: number }>;
+  trend: Array<{ label: string; target: number }>;
   categories: Array<{ name: string; rate: number; mentioned: number; total: number }>;
   competitors: Array<{
     name: string;
     mentions: number;
+    comparisonLevel: "core" | "candidate";
+    contexts: string[];
+    questions: string[];
+    reasons: string[];
     sourceCount: number;
   }>;
   actions: Array<{
@@ -168,5 +189,18 @@ export interface DashboardData {
     title: string;
     priority: Priority;
     evidenceCount: number;
+    description: string;
+    steps: string[];
+    channels: string[];
+    materials: string[];
+    example: string;
+    completionCriteria: string;
+    questions: string[];
+    sourceChannels: Array<{
+      domain: string;
+      citationCount: number;
+      access: "maintainable" | "submission" | "reference";
+      label: string;
+    }>;
   }>;
 }

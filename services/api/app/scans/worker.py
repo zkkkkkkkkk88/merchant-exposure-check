@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.core.config import Settings, get_settings
 from app.db.session import SessionLocal
 from app.merchants import models as merchant_models  # noqa: F401
+from app.merchants.local_context import process_next_local_context
 from app.queries.models import Query
 from app.scans.adapters.ark import ArkSearchAdapter
 from app.scans.adapters.base import (
@@ -184,8 +185,9 @@ async def process_next_scan(
 async def run_worker(poll_interval: float = 2.0) -> None:
     adapters = build_adapter_registry(get_settings())
     while True:
+        context_id = await process_next_local_context(SessionLocal, adapters.get("ark"))
         processed_id = await process_next_scan(SessionLocal, adapters)
-        if processed_id is None:
+        if processed_id is None and context_id is None:
             await asyncio.sleep(poll_interval)
 
 

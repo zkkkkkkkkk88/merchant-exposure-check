@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense, type ReactNode } from "react";
 
 import { BackLink } from "./back-link";
 
@@ -15,6 +15,7 @@ const navigation = [
 ] as const;
 
 function fallbackFor(pathname: string): string {
+  if (pathname === "/competitors" || pathname === "/actions") return "/";
   if (pathname.startsWith("/merchants/")) return "/merchants";
   if (pathname.startsWith("/reports/")) return "/scans";
   if (pathname.startsWith("/scans/")) return "/scans";
@@ -27,12 +28,20 @@ function isCurrent(pathname: string, href: string): boolean {
   return pathname.startsWith(href);
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+function ShellContent({ children }: { children: ReactNode }) {
   const pathname = usePathname() ?? "/";
+  const searchParams = useSearchParams();
+  const profileMerchant = pathname.match(/^\/merchants\/([^/]+)$/)?.[1];
+  const merchantId = profileMerchant ?? searchParams?.get("merchant");
+  const withMerchant = (href: string) => {
+    if (!merchantId) return href;
+    if (href === "/merchants") return `/merchants/${encodeURIComponent(merchantId)}`;
+    return `${href}${href.includes("?") ? "&" : "?"}merchant=${encodeURIComponent(merchantId)}`;
+  };
   return (
     <div className="app-shell">
       <aside className="navigation-rail">
-        <Link className="brand-mark" href="/" aria-label="见序首页">
+        <Link className="brand-mark" href={withMerchant("/")} aria-label="见序首页">
           <span>见</span>
           <span className="brand-copy"><strong>见序</strong><small>Visibility Dossier</small></span>
         </Link>
@@ -43,7 +52,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 aria-current={current ? "page" : undefined}
                 className={`nav-link${current ? " active" : ""}`}
-                href={href}
+                href={withMerchant(href)}
                 key={href}
               >
                 <span>{String(index + 1).padStart(2, "0")}</span>
@@ -55,13 +64,21 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="rail-note"><span className="live-dot" />商家可见性档案</div>
       </aside>
       <header className="mobile-header">
-        <Link className="brand-mark" href="/"><span>见</span><strong>见序</strong></Link>
-        <Link href="/merchants">商家画像</Link>
+        <Link className="brand-mark" href={withMerchant("/")}><span>见</span><strong>见序</strong></Link>
+        <Link href={withMerchant("/merchants")}>商家画像</Link>
       </header>
       <main className="app-content">
         {pathname !== "/" && <div className="global-back"><BackLink fallbackHref={fallbackFor(pathname)} /></div>}
         {children}
       </main>
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<div className="app-shell"><main className="app-content">{children}</main></div>}>
+      <ShellContent>{children}</ShellContent>
+    </Suspense>
   );
 }

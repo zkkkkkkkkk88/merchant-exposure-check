@@ -43,13 +43,17 @@ class MetricMention(BaseModel):
 
     brand_id: UUID
     normalized_name: str = Field(min_length=1)
+    display_name: str = Field(min_length=1)
     position: int | None = Field(default=None, ge=1)
+    recommendation_reason: str | None = None
+    source_domains: set[str] = Field(default_factory=set)
 
 
 class AnalyzedQueryResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     query_id: UUID
+    query_text: str = ""
     category: QueryCategory
     intent_type: QueryIntent = "recommendation"
     fact_keys: list[str] = Field(default_factory=list)
@@ -58,6 +62,17 @@ class AnalyzedQueryResult(BaseModel):
     mentions: list[MetricMention]
     target_source_domains: set[str] = Field(default_factory=set)
     confirmed_target_fields: set[str] = Field(default_factory=set)
+
+
+class CompetitorDetail(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    query_count: int
+    categories: list[str]
+    questions: list[str]
+    reasons: list[str]
+    source_count: int
 
 
 class MetricSnapshot(BaseModel):
@@ -76,5 +91,9 @@ class MetricSnapshot(BaseModel):
     source_coverage_rate: Decimal
     independent_source_count: int
     category_coverage: dict[str, Decimal]
+    category_mentions: dict[str, int]
+    category_totals: dict[str, int]
     competitor_counts: dict[str, int]
+    competitor_details: list[CompetitorDetail]
+    coverage_gaps: dict[str, list[str]]
     confirmed_target_fields: set[str]

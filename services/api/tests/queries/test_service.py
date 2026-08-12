@@ -10,6 +10,61 @@ from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
 
 
+def test_regeneration_uses_the_latest_edited_profile(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="测试门店", city="云南", industry="医疗"),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="云南", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="口腔医疗机构", confirmation_status="confirmed"),
+        ]),
+    )
+    QueryLibraryService.generate(db_session, merchant.id, count=6)
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="云南", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="口腔门诊", confirmation_status="confirmed"),
+        ]),
+    )
+
+    second = QueryLibraryService.generate(db_session, merchant.id, count=6)
+
+    assert second.version == 2
+    assert any("口腔门诊" in query.text for query in second.queries)
+    assert all("口腔医疗机构" not in query.text for query in second.queries)
+
+
+def test_generation_prefers_completed_county_context_over_province_profile(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="县城门诊", city="云南", industry="口腔医疗机构"),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="云南", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="口腔医疗机构", confirmation_status="confirmed"),
+        ]),
+    )
+    merchant.local_context.status = "completed"
+    merchant.local_context.province = "云南省"
+    merchant.local_context.city = "普洱市"
+    merchant.local_context.county = "澜沧县"
+    db_session.commit()
+
+    query_set = QueryLibraryService.generate(db_session, merchant.id, count=6)
+
+    assert all("澜沧县" in query.text or merchant.name in query.text for query in query_set.queries)
+    assert all("云南有什么" not in query.text and "普洱市有什么" not in query.text for query in query_set.queries)
+
+
 def test_generation_creates_incrementing_query_set_versions(db_session: Session) -> None:
     merchant = MerchantService.create(
         db_session,

@@ -111,3 +111,20 @@ class MerchantProfileFactRead(BaseModel):
 class MerchantProfileRead(BaseModel):
     merchant_id: UUID
     facts: list[MerchantProfileFactRead]
+
+
+class MerchantLocalContextRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    merchant_id: UUID
+    status: str
+    province: str | None
+    city: str | None
+    county: str | None
+    township: str | None
+    normalized_address: str | None
+    landmarks: list[str]
+    transport_options: list[str]
+    source_urls: list[str]
+    error_message: str | None
+    updated_at: datetime

@@ -44,9 +44,9 @@ export default async function ScansPage({
                     <td>{statusLabels[run.status]}</td>
                     <td>{run.success_count} / {run.success_count + run.failure_count}</td>
                     <td className="run-actions">
-                      <Link className="text-link" href={`/scans/${run.id}`}>查看 →</Link>
+                      <Link className="text-link" href={`/scans/${run.id}?merchant=${merchantId}`}>查看 →</Link>
                       {(run.status === "completed" || run.status === "partial") && (
-                        <Link className="text-link" href={`/reports/${run.id}`}>报告</Link>
+                        <Link className="text-link" href={`/reports/${run.id}?merchant=${merchantId}`}>报告</Link>
                       )}
                     </td>
                   </tr>

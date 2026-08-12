@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import {
-  generateQuerySet,
-  parseMerchantProfile,
-  replaceMerchantProfile,
-} from "@/lib/api";
+  parseProfileAction,
+  saveProfileAction,
+  saveProfileAndGenerateAction,
+} from "@/app/merchants/[id]/actions";
 import type { MerchantProfileData, MerchantProfileFactData, ProfileValue } from "@/lib/contracts";
 
 const labels: Record<string, string> = {
@@ -42,6 +42,21 @@ function editValue(original: ProfileValue, next: string): ProfileValue {
     : next;
 }
 
+function ensureRequiredFacts(facts: MerchantProfileFactData[]): MerchantProfileFactData[] {
+  if (facts.some((fact) => fact.field_key === "category.precise")) return facts;
+  const legacyCategory = facts.find((fact) => fact.field_key === "category.legacy");
+  return [
+    ...facts,
+    {
+      field_key: "category.precise",
+      value: legacyCategory?.value ?? "",
+      confirmation_status: "pending",
+      confidence: legacyCategory?.confidence ?? 0,
+      source_urls: legacyCategory?.source_urls ?? [],
+    },
+  ];
+}
+
 export function ProfileEditor({
   initialProfile,
   merchantId,
@@ -50,7 +65,7 @@ export function ProfileEditor({
   merchantId: string;
 }) {
   const router = useRouter();
-  const [facts, setFacts] = useState(initialProfile.facts);
+  const [facts, setFacts] = useState(() => ensureRequiredFacts(initialProfile.facts));
   const [rawText, setRawText] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [busy, setBusy] = useState(false);
@@ -70,13 +85,15 @@ export function ProfileEditor({
     setBusy(true);
     setError("");
     try {
-      const parsed = await parseMerchantProfile(
+      const result = await parseProfileAction(
         merchantId,
         rawText,
         sourceUrl.trim() ? [sourceUrl.trim()] : [],
       );
+      if (!result.ok) throw new Error(result.error);
+      const parsed = result.data;
       const parsedKeys = new Set(parsed.facts.map((fact) => fact.field_key));
-      setFacts([...facts.filter((fact) => !parsedKeys.has(fact.field_key)), ...parsed.facts]);
+      setFacts(ensureRequiredFacts([...facts.filter((fact) => !parsedKeys.has(fact.field_key)), ...parsed.facts]));
       setMessage("已识别候选资料，请逐项确认。未确认内容不会用于生成问题。");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "资料识别失败。");
@@ -89,11 +106,28 @@ export function ProfileEditor({
     setBusy(true);
     setError("");
     try {
-      await replaceMerchantProfile(merchantId, facts);
-      await generateQuerySet(merchantId, 12);
+      const result = await saveProfileAndGenerateAction(merchantId, facts);
+      if (!result.ok) throw new Error(result.error);
       router.push(`/queries?merchant=${merchantId}`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "保存失败，请稍后重试。");
+      setBusy(false);
+    }
+  }
+
+  async function saveOnly() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await saveProfileAction(merchantId, facts);
+      if (!result.ok) throw new Error(result.error);
+      const saved = result.data;
+      setFacts(ensureRequiredFacts(saved.facts));
+      setMessage("商家画像已保存。");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "保存失败，请稍后重试。");
+    } finally {
       setBusy(false);
     }
   }
@@ -105,6 +139,7 @@ export function ProfileEditor({
         <label>粘贴商家公开资料<textarea aria-label="粘贴商家公开资料" rows={6} value={rawText} onChange={(event) => setRawText(event.target.value)} /></label>
         <label>资料来源链接（可选）<input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://" /></label>
         <button className="button secondary" disabled={busy || rawText.trim().length < 10} onClick={parse} type="button">识别资料</button>
+        {rawText.trim().length < 10 && <p className="method-copy">请先粘贴至少 10 个字的商家资料；来源链接可以不填。</p>}
         {message && <p className="save-saved" role="status">{message}</p>}
       </section>
 
@@ -134,9 +169,10 @@ export function ProfileEditor({
             );
           })}
         </div>
-        {!ready && <p className="method-copy">至少确认“城市”和“精准品类”后才能生成问题。</p>}
+        {!ready && <p className="method-copy">请确认城市和精准品类后再生成问题。</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
+          <button className="button secondary" disabled={busy} onClick={saveOnly} type="button">仅保存修改</button>
           <button className="button primary" disabled={!ready || busy} onClick={saveAndGenerate} type="button">{busy ? "处理中…" : "保存并生成精准问题"}</button>
         </div>
       </section>

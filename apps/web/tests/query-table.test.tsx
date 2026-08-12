@@ -118,6 +118,6 @@ describe("query library workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "开始后台检测（1 条）" }));
 
     await waitFor(() => expect(createScanAction).toHaveBeenCalledWith("m1", "set1"));
-    expect(pushMock).toHaveBeenCalledWith("/scans/scan1");
+    expect(pushMock).toHaveBeenCalledWith("/scans/scan1?merchant=m1");
   });
 });

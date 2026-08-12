@@ -58,3 +58,38 @@ it("parses pasted merchant text and requires confirmation before query generatio
   expect(push).toHaveBeenCalledWith("/queries?merchant=m1");
 });
 
+it("adds an editable precise category when an imported merchant only has a legacy industry", () => {
+  render(<ProfileEditor initialProfile={{
+    merchant_id: "m1",
+    facts: [
+      { field_key: "location.city", value: "云南", confirmation_status: "pending", confidence: 1, source_urls: [] },
+      { field_key: "category.legacy", value: "口腔医疗机构", confirmation_status: "pending", confidence: 1, source_urls: [] },
+    ],
+  }} merchantId="m1" />);
+
+  expect(screen.getByRole("checkbox", { name: "确认 精准品类" })).toBeEnabled();
+  expect(screen.getByRole("textbox", { name: "编辑 精准品类" })).toHaveValue("口腔医疗机构");
+  expect(screen.getByText("请确认城市和精准品类后再生成问题。")).toBeVisible();
+});
+
+it("saves edited profile facts without generating a new query set", async () => {
+  render(<ProfileEditor initialProfile={{
+    merchant_id: "m1",
+    facts: [
+      { field_key: "location.city", value: "云南", confirmation_status: "confirmed", confidence: 1, source_urls: [] },
+      { field_key: "category.precise", value: "口腔医疗机构", confirmation_status: "confirmed", confidence: 1, source_urls: [] },
+    ],
+  }} merchantId="m1" />);
+
+  fireEvent.change(screen.getByRole("textbox", { name: "编辑 精准品类" }), {
+    target: { value: "口腔门诊" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "仅保存修改" }));
+
+  await waitFor(() => expect(replaceMerchantProfile).toHaveBeenCalledWith(
+    "m1",
+    expect.arrayContaining([expect.objectContaining({ field_key: "category.precise", value: "口腔门诊" })]),
+  ));
+  expect(generateQuerySet).not.toHaveBeenCalled();
+  expect(await screen.findByText("商家画像已保存。" )).toBeVisible();
+});

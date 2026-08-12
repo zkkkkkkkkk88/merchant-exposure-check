@@ -4,7 +4,7 @@ from collections.abc import Set as AbstractSet
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
-from app.analysis.contracts import AnalyzedQueryResult, MetricSnapshot
+from app.analysis.contracts import AnalyzedQueryResult, CompetitorDetail, MetricSnapshot
 
 RATE_PRECISION = Decimal("0.0001")
 SCORE_PRECISION = Decimal("0.01")
@@ -47,6 +47,11 @@ def calculate_metrics(
     category_totals: Counter[str] = Counter()
     category_mentions: Counter[str] = Counter()
     competitor_queries: dict[str, set[UUID]] = defaultdict(set)
+    competitor_display_names: dict[str, str] = {}
+    competitor_categories: dict[str, set[str]] = defaultdict(set)
+    competitor_questions: dict[str, dict[UUID, str]] = defaultdict(dict)
+    competitor_sources: dict[str, set[str]] = defaultdict(set)
+    competitor_reasons: dict[str, list[str]] = defaultdict(list)
     source_domains: set[str] = set()
     confirmed_fields: set[str] = set(verified_fields)
     for item in valid_results:
@@ -60,6 +65,22 @@ def calculate_metrics(
         for mention in item.mentions:
             if mention.brand_id != target_brand_id:
                 competitor_queries[mention.normalized_name].add(item.query_id)
+                competitor_display_names.setdefault(
+                    mention.normalized_name, mention.display_name
+                )
+                competitor_categories[mention.normalized_name].add(item.category)
+                competitor_questions[mention.normalized_name][item.query_id] = item.query_text
+                competitor_sources[mention.normalized_name].update(
+                    mention.source_domains
+                )
+                if (
+                    mention.recommendation_reason
+                    and mention.recommendation_reason
+                    not in competitor_reasons[mention.normalized_name]
+                ):
+                    competitor_reasons[mention.normalized_name].append(
+                        mention.recommendation_reason
+                    )
 
     profile_completeness = rate(
         len(set(confirmed_profile_fields) & set(required_profile_fields)),
@@ -71,7 +92,7 @@ def calculate_metrics(
     )
     high_intent_hit_rate = rate(len(target_mentions), len(recommendation_results))
     competitor_counts = {
-        name: len(query_ids)
+        competitor_display_names[name]: len(query_ids)
         for name, query_ids in sorted(competitor_queries.items())
     }
     competitor_gap_closure = (
@@ -119,6 +140,30 @@ def calculate_metrics(
             category: rate(category_mentions[category], total)
             for category, total in sorted(category_totals.items())
         },
+        category_mentions=dict(sorted(category_mentions.items() | {
+            category: 0 for category in category_totals if category not in category_mentions
+        }.items())),
+        category_totals=dict(sorted(category_totals.items())),
         competitor_counts=competitor_counts,
+        competitor_details=[
+            CompetitorDetail(
+                name=competitor_display_names[name],
+                query_count=len(competitor_queries[name]),
+                categories=sorted(competitor_categories[name]),
+                questions=list(competitor_questions[name].values()),
+                reasons=competitor_reasons[name],
+                source_count=len(competitor_sources[name]),
+            )
+            for name in sorted(competitor_queries)
+        ],
+        coverage_gaps={
+            category: [
+                item.query_text
+                for item in recommendation_results
+                if item.category == category and item not in target_mentions
+            ]
+            for category in sorted(category_totals)
+            if category_mentions[category] < category_totals[category]
+        },
         confirmed_target_fields=confirmed_fields,
     )

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, UniqueConstraint, Uuid
+from sqlalchemy import JSON, Boolean, DateTime, Float, ForeignKey, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -42,6 +42,12 @@ class Merchant(Base):
         back_populates="merchant",
         cascade="all, delete-orphan",
         lazy="selectin",
+    )
+    local_context: Mapped[MerchantLocalContext] = relationship(
+        back_populates="merchant",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        uselist=False,
     )
 
 
@@ -82,3 +88,26 @@ class MerchantProfileFact(Base):
     )
 
     merchant: Mapped[Merchant] = relationship(back_populates="profile_facts")
+
+
+class MerchantLocalContext(Base):
+    __tablename__ = "merchant_local_contexts"
+
+    merchant_id: Mapped[UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("merchants.id", ondelete="CASCADE"), primary_key=True
+    )
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    province: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    county: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    township: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    normalized_address: Mapped[str | None] = mapped_column(String(400), nullable=True)
+    landmarks: Mapped[list[str]] = mapped_column(JSON, default=list)
+    transport_options: Mapped[list[str]] = mapped_column(JSON, default=list)
+    source_urls: Mapped[list[str]] = mapped_column(JSON, default=list)
+    raw_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+
+    merchant: Mapped[Merchant] = relationship(back_populates="local_context")

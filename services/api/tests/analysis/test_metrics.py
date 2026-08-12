@@ -22,7 +22,13 @@ def result(
         is_valid=True,
         is_recommended=recommended,
         mentions=(
-            [MetricMention(brand_id=target_id, normalized_name="target")]
+            [
+                MetricMention(
+                    brand_id=target_id,
+                    normalized_name="target",
+                    display_name="Target",
+                )
+            ]
             if mentioned
             else []
         ),
@@ -101,3 +107,28 @@ def test_recommended_stage_and_weights_are_reproducible() -> None:
     assert snapshot.competitor_gap_closure == Decimal("0.0000")
     assert snapshot.readiness_score == Decimal("72.50")
     assert snapshot.mention_rate == Decimal("0.5000")
+
+
+def test_category_counts_keep_their_own_denominators() -> None:
+    target_id = uuid4()
+    geo_hit = result(
+        target_id=target_id,
+        intent_type="recommendation",
+        mentioned=True,
+    ).model_copy(update={"category": "geo"})
+    category_miss = result(
+        target_id=target_id,
+        intent_type="recommendation",
+    ).model_copy(update={"category": "category"})
+    price_miss = result(
+        target_id=target_id,
+        intent_type="recommendation",
+    ).model_copy(update={"category": "price"})
+
+    snapshot = calculate_metrics(
+        [geo_hit, category_miss, price_miss],
+        target_id,
+    )
+
+    assert snapshot.category_mentions == {"category": 0, "geo": 1, "price": 0}
+    assert snapshot.category_totals == {"category": 1, "geo": 1, "price": 1}

@@ -136,7 +136,7 @@ export function QueryTable({
     setScanError("");
     const result = await createScanAction(merchantId, querySetId);
     if (result.ok) {
-      router.push(`/scans/${result.data.id}`);
+      router.push(`/scans/${result.data.id}?merchant=${merchantId}`);
       return;
     }
     setCreating(false);

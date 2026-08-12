@@ -21,6 +21,7 @@ import {
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
+  useSearchParams: () => new URLSearchParams(),
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
 }));
 
@@ -141,9 +142,10 @@ it("keeps a queued scan in the background without exposing a premature report", 
 it("renders report metrics returned by the API", async () => {
   vi.mocked(getScanRun).mockResolvedValue(realRun);
   vi.mocked(getMerchant).mockResolvedValue(realMerchant);
-  vi.mocked(getReport).mockResolvedValue({ merchant_id: "merchant-real", scan_run_id: "scan-real", metrics: { total_query_count: 1, valid_query_count: 1, mention_rate: "0", visibility_stage: "unrecognized", profile_completeness: "0", public_verifiability: "0", high_intent_hit_rate: "0", competitor_gap_closure: "0", readiness_score: "0", task_valid_rate: "1", source_coverage_rate: "0", independent_source_count: 0, category_coverage: { geo: "0" }, competitor_counts: {}, confirmed_target_fields: [] }, findings: [] });
+  vi.mocked(getReport).mockResolvedValue({ merchant_id: "merchant-real", scan_run_id: "scan-real", metrics: { total_query_count: 1, valid_query_count: 1, mention_rate: "0", visibility_stage: "unrecognized", profile_completeness: "0", public_verifiability: "0", high_intent_hit_rate: "0", competitor_gap_closure: "0", readiness_score: "0", task_valid_rate: "1", source_coverage_rate: "0", independent_source_count: 0, category_coverage: { geo: "0" }, category_mentions: { geo: 0 }, category_totals: { geo: 1 }, competitor_counts: {}, competitor_details: [], coverage_gaps: { geo: ["杭州万象城有什么值得去的西餐厅？"] }, confirmed_target_fields: [] }, findings: [{ title: "核对地域信息", description: "本次地域问题未识别到目标商家。", priority: "medium", certainty: "confirmed", evidenceCount: 1, questions: ["杭州万象城有什么值得去的西餐厅？"] }] });
   render(await ReportPage({ params: Promise.resolve({ scanId: "scan-real" }) }));
   expect(screen.getByText(/1\/1 个有效问题/)).toBeVisible();
+  expect(screen.getByText("杭州万象城有什么值得去的西餐厅？")).toBeVisible();
   expect(screen.queryByText(/营业时间与价格区间/)).not.toBeInTheDocument();
 });
 
@@ -182,8 +184,8 @@ it("renders scan runs returned by the API instead of fixed demo runs", async () 
 
   expect(screen.getByRole("link", { name: /查看/ })).toHaveAttribute(
     "href",
-    "/scans/scan-real",
+    "/scans/scan-real?merchant=merchant-real",
   );
   expect(screen.queryByText("18 / 20")).not.toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "报告" })).toHaveAttribute("href", "/reports/scan-real");
+  expect(screen.getByRole("link", { name: "报告" })).toHaveAttribute("href", "/reports/scan-real?merchant=merchant-real");
 });

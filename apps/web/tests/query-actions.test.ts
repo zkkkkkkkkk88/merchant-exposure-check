@@ -29,7 +29,7 @@ describe("query workflow server actions", () => {
 
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8000/queries/q1",
+      "http://127.0.0.1:8000/queries/q1",
       expect.objectContaining({
         method: "PATCH",
         body: JSON.stringify({ review_status: "approved", is_enabled: true }),
@@ -58,7 +58,7 @@ describe("query workflow server actions", () => {
 
     expect(result).toMatchObject({ ok: true, data: { id: "scan1", status: "queued" } });
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8000/scan-runs",
+      "http://127.0.0.1:8000/scan-runs",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ merchant_id: "m1", query_set_id: "set1", adapter_name: "ark" }),
