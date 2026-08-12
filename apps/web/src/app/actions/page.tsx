@@ -1,0 +1,11 @@
+import Link from "next/link";
+import { AppShell } from "@/components/app-shell";
+import { StatusBadge } from "@/components/status-badge";
+import { getDashboard } from "@/lib/api";
+
+export default async function ActionsPage({ searchParams = Promise.resolve({}) }: { searchParams?: Promise<{ merchant?: string }> }) {
+  const merchantId = (await searchParams).merchant;
+  const data = merchantId ? await getDashboard(merchantId) : null;
+  if (!merchantId || !data) return <AppShell><div className="state-page"><h1>暂无行动方案</h1><p>请先选择商家并完成一次真实检测。</p><Link className="text-link" href="/">返回总览</Link></div></AppShell>;
+  return <AppShell><div className="workspace-page wide-page"><header className="page-header"><div><p className="kicker">RECOMMENDATION PLAYBOOK</p><h1>推荐率行动方案</h1><p>{data.merchant.name} · 按真实检测缺口排序</p></div><Link className="button secondary" href={`/?merchant=${merchantId}`}>返回总览</Link></header><p className="recommendation-note">这些行动用于提高公开信息被检索、核验和引用的概率，从而增加进入相关回答的机会；不承诺平台排名或必然被推荐。</p>{data.actions.length ? <div className="action-plan-list">{data.actions.map((item, index) => <article className="action-plan" key={item.id}><header><span>{String(index + 1).padStart(2, "0")}</span><div><StatusBadge priority={item.priority} /><h2>{item.title}</h2><p>{item.description}</p></div></header><div className="action-plan-grid"><section><h3>具体怎么做</h3><ol>{item.steps.map((step) => <li key={step}>{step}</li>)}</ol></section><section><h3>本次回答实际引用</h3>{item.sourceChannels.length ? <ul>{item.sourceChannels.map((source) => <li key={source.domain}><strong>{source.domain}</strong> · 引用 {source.citationCount} 次 · {source.label}</li>)}</ul> : <p>本次回答未返回可追溯平台，不指定发布渠道。</p>}<h3>候选维护渠道（需确认已开通）</h3><p>{item.channels.join(" · ")}</p><h3>需要准备</h3><p>{item.materials.join(" · ")}</p></section><section><h3>表述示例</h3><blockquote>{item.example}</blockquote><h3>完成标准</h3><p>{item.completionCriteria}</p></section></div><details><summary>查看触发此行动的 {item.evidenceCount} 个问题</summary><ul>{item.questions.map((question) => <li key={question}>{question}</li>)}</ul></details></article>)}</div> : <div className="state-page"><h2>当前没有明确覆盖缺口</h2><p>可以扩大问题类型或使用同一问题集再次检测。</p></div>}<div className="action-footer"><Link className="button primary" href={`/scans?merchant=${merchantId}`}>完成后重新检测</Link></div></div></AppShell>;
+}
