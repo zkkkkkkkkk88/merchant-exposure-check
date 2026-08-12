@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import MobileChecksPage from "@/app/mobile-checks/page";
@@ -44,7 +44,26 @@ describe("mobile Doubao workspace", () => {
     expect(screen.getByRole("button", { name: "一键复制全部问题" })).toBeInTheDocument();
     expect(screen.getByLabelText("集中粘贴3份回答")).toBeInTheDocument();
     expect(screen.getByText(/截图仅作可选证据，不需要每题上传/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "统一保存并确认本轮" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "识别回答并继续" })).toBeEnabled();
+  });
+
+  it("shows a completed state before starting another round", async () => {
+    vi.mocked(getMerchants).mockResolvedValue([{ id: "merchant-1", name: "澜沧皓雅口腔门诊部", branch_name: null }]);
+    vi.mocked(getMobileValidationSets).mockResolvedValue([{ id: "set-1", merchant_id: "merchant-1", created_at: "2026-08-12T00:00:00Z", items: [] }]);
+    vi.mocked(getMobileWorkspace).mockResolvedValue({
+      latestRoundId: "round-1",
+      sourceRoundId: "round-1",
+      metrics: { confirmedCount: 3, mentionRate: 1 / 3, primaryRate: 0, categoryCoverageRate: 1 / 3, informationAccuracyRate: 1, sourceCoverageRate: 0 },
+      entities: ["澜沧皓雅口腔门诊部"],
+      sourceGaps: [],
+    });
+
+    render(await MobileChecksPage({ searchParams: Promise.resolve({ merchant: "merchant-1" }) }));
+
+    expect(screen.getByRole("heading", { name: "上一轮已保存成功" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("集中粘贴3份回答")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "开始新一轮" }));
+    expect(screen.getByLabelText("集中粘贴3份回答")).toBeInTheDocument();
   });
 
   it("renders a prominent target versus competitor source gap", async () => {
