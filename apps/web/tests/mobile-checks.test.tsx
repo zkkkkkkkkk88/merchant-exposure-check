@@ -61,7 +61,7 @@ describe("mobile Doubao workspace", () => {
     render(await MobileChecksPage({ searchParams: Promise.resolve({ merchant: "merchant-1" }) }));
 
     expect(screen.getByRole("heading", { name: "目标商家与竞品来源差距" })).toBeInTheDocument();
-    expect(screen.getByText("当前手机实测未发现")).toBeInTheDocument();
+    expect(screen.getByText("本轮来源未发现")).toBeInTheDocument();
     expect(screen.getByText("招聘页：CT、独立诊室")).toBeInTheDocument();
     expect(screen.getByText("首批推荐率")).toBeInTheDocument();
   });

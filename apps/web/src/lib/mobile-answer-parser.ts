@@ -8,8 +8,6 @@ export type MobileAnswerDraft = {
   needsReview: boolean;
 };
 
-const institutionPattern = /([\u4e00-\u9fffA-Za-z·]{2,30}(?:口腔(?:门诊部|诊所|医院)?|医院|诊所))/g;
-
 function splitBlocks(rawText: string, count: number): string[] {
   const markers = [...rawText.matchAll(/(?:^|\n)\s*(?:Q|问题)\s*([1-9]\d*)\s*[：:.、-]?\s*/gi)];
   if (markers.length) {
@@ -27,28 +25,60 @@ function splitBlocks(rawText: string, count: number): string[] {
   return Array.from({ length: count }, (_, index) => separated[index] ?? "");
 }
 
+function entityCore(value: string): string {
+  return value
+    .replace(/[\s（）()·]/g, "")
+    .replace(/(?:口腔科|口腔医疗机构|口腔门诊部|口腔门诊|门诊部|门诊|诊所|医院|口腔)$/u, "");
+}
+
+function isSameEntity(candidate: string, merchantName: string): boolean {
+  const candidateCore = entityCore(candidate);
+  const merchantCore = entityCore(merchantName);
+  return candidateCore.length >= 2 && (
+    candidateCore === merchantCore || merchantCore.endsWith(candidateCore) || candidateCore.endsWith(merchantCore)
+  );
+}
+
+function extractListedEntities(answer: string): Array<{ name: string; index: number }> {
+  const entities: Array<{ name: string; index: number }> = [];
+  const pattern = /^\s*(?:\d+\s*[.、．]|[-•])\s*([^：:\n]{2,45})\s*[：:]/gmu;
+  for (const match of answer.matchAll(pattern)) {
+    const name = match[1].trim().replace(/[。；;，,]$/u, "");
+    if (/(?:医院|口腔科|口腔|门诊|诊所)/u.test(name)) entities.push({ name, index: match.index ?? 0 });
+  }
+  const inlinePattern = /(?:首推|推荐|看看|考虑)\s*([\u4e00-\u9fffA-Za-z·（）()]{2,30}(?:口腔(?:门诊部|门诊|诊所)?|医院|诊所))/gu;
+  for (const match of answer.matchAll(inlinePattern)) {
+    const name = match[1].trim();
+    if (!entities.some((entity) => entity.name === name)) entities.push({ name, index: match.index ?? 0 });
+  }
+  entities.sort((left, right) => left.index - right.index);
+  return entities;
+}
+
 export function parseMobileAnswers(rawText: string, items: MobileAnswerItem[], merchantName: string): MobileAnswerDraft[] {
   const blocks = splitBlocks(rawText, items.length);
-  const merchantTokens = [merchantName, merchantName.replace(/(?:口腔)?(?:门诊部|诊所|医院)$/u, "")].filter((item) => item.length >= 2);
   return items.map((item, index) => {
     const answer = blocks[index] ?? "";
-    const mentioned = merchantTokens.some((token) => answer.includes(token));
-    const targetIndex = Math.min(...merchantTokens.map((token) => answer.indexOf(token)).filter((value) => value >= 0));
-    const firstInstitution = answer.search(institutionPattern);
-    const targetContext = Number.isFinite(targetIndex)
-      ? answer.slice(Math.max(0, targetIndex - 12), targetIndex + merchantName.length + 12)
+    const listed = extractListedEntities(answer);
+    const targetPosition = listed.findIndex((entity) => isSameEntity(entity.name, merchantName));
+    const mentionedInList = targetPosition >= 0;
+    const merchantCore = entityCore(merchantName);
+    const mentionedInText = merchantCore.length >= 2 && answer.includes(merchantCore);
+    const mentioned = mentionedInList || mentionedInText;
+    const targetTextIndex = answer.indexOf(merchantCore);
+    const targetPrefix = targetTextIndex >= 0
+      ? answer.slice(Math.max(0, targetTextIndex - 15), targetTextIndex)
       : "";
-    const explicitlyPrimary = /首推|优先|第一推荐/.test(targetContext);
-    const explicitlySupplementary = /补充|备选|也可|作为/.test(targetContext);
-    const supplementary = mentioned && !explicitlyPrimary && (
-      explicitlySupplementary || (firstInstitution >= 0 && Number.isFinite(targetIndex) && targetIndex > firstInstitution)
-    );
-    const competitors = [...new Set((answer.match(institutionPattern) ?? []).map((candidate) => candidate.replace(/^(?:首推|推荐|也可以看看|可以看看|备选|补充|作为)/, "")))].filter(
-      (candidate) => !merchantTokens.some((token) => candidate.includes(token) || token.includes(candidate)),
-    );
+    const targetSuffix = targetTextIndex >= 0
+      ? answer.slice(targetTextIndex + merchantCore.length, targetTextIndex + merchantCore.length + 10)
+      : "";
+    const explicitlySupplementary = /补充|备选|作为|也可/.test(targetPrefix) || /^(?:口腔)?(?:门诊部|门诊|诊所|医院)?(?:可作为补充|是备选)/.test(targetSuffix);
+    const competitors = [...new Set(listed
+      .filter((entity) => !isSameEntity(entity.name, merchantName))
+      .map((entity) => entity.name))];
     return {
       itemId: item.id,
-      mentionLevel: mentioned ? (supplementary ? "supplementary" : "primary") : "none",
+      mentionLevel: mentioned ? (targetPosition > 0 || explicitlySupplementary ? "supplementary" : "primary") : "none",
       competitors,
       answerExcerpt: answer.slice(0, 500),
       needsReview: answer.length === 0,

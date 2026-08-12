@@ -193,7 +193,7 @@ def test_source_gap_matrix_uses_confirmed_mobile_sources_and_marks_target_gap(
     workspace = MobileCheckService(db_session).get_workspace(merchant.id)
     recruitment = next(row for row in workspace["sourceGaps"] if row["key"] == "recruitment")
 
-    assert workspace["entities"] == [merchant.name, "无来源竞品", "王天佑口腔"]
+    assert workspace["entities"] == [merchant.name, "王天佑口腔"]
     assert recruitment["highlight"] is True
     assert recruitment["cells"][merchant.name]["status"] == "missing"
     assert recruitment["cells"]["王天佑口腔"] == {
@@ -202,6 +202,32 @@ def test_source_gap_matrix_uses_confirmed_mobile_sources_and_marks_target_gap(
     }
     equipment = next(row for row in workspace["sourceGaps"] if row["key"] == "equipment")
     assert equipment["cells"]["王天佑口腔"]["evidence"] == ["王天佑招聘页：CT、独立诊室"]
+
+
+def test_source_gap_stays_empty_until_sources_are_provided(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    add_queries(db_session, merchant, 6)
+    validation_set = MobileCheckService(db_session).create_validation_set(merchant.id)
+    round_record = MobileCheckRound(
+        merchant_id=merchant.id,
+        validation_set_id=validation_set.id,
+        status="confirmed",
+    )
+    db_session.add(round_record)
+    db_session.flush()
+    db_session.add(MobileCheckResult(
+        round_id=round_record.id,
+        validation_item_id=validation_set.items[0].id,
+        mention_level="none",
+        competitors=[f"competitor {index}" for index in range(20)],
+        is_confirmed=True,
+    ))
+    db_session.commit()
+
+    workspace = MobileCheckService(db_session).get_workspace(merchant.id)
+
+    assert workspace["entities"] == [merchant.name]
+    assert workspace["sourceGaps"] == []
 
 
 def test_inherited_sources_keep_original_round_provenance(db_session: Session) -> None:

@@ -170,7 +170,13 @@ class MobileCheckService:
     @staticmethod
     def _source_rows(merchant_name: str, sources: list[MobileRoundSource], result_competitors: set[str]) -> tuple[list[str], list[dict]]:
         confirmed = [source for source in sources if source.is_confirmed]
-        competitors = sorted(result_competitors | {source.entity_name for source in confirmed if source.entity_name != merchant_name})
+        if not confirmed:
+            return [merchant_name], []
+        source_competitors = {source.entity_name for source in confirmed if source.entity_name != merchant_name}
+        competitors = sorted(
+            source_competitors,
+            key=lambda name: (-sum(source.entity_name == name for source in confirmed), name),
+        )[:3]
         entities = [merchant_name, *competitors]
         labels = {
             "profile": "官网/机构介绍页",
@@ -191,7 +197,7 @@ class MobileCheckService:
                     "status": "present" if matches else "missing",
                     "evidence": [
                         f"{source.title}：{'、'.join(source.facts)}" if source.facts else source.title
-                        for source in matches
+                        for source in matches[:2]
                     ],
                 }
             rows.append({
@@ -213,9 +219,11 @@ class MobileCheckService:
             cells: dict[str, dict] = {}
             for entity in entities:
                 matches = [source for source in confirmed if source.entity_name == entity and any(any(needle.casefold() in fact.casefold() for needle in needles) for fact in source.facts)]
-                cells[entity] = {"status": "present" if matches else "missing", "evidence": [f"{source.title}：{'、'.join(source.facts)}" for source in matches]}
+                cells[entity] = {"status": "present" if matches else "missing", "evidence": [f"{source.title}：{'、'.join(source.facts)}" for source in matches[:2]]}
             rows.append({"key": key, "label": label, "cells": cells, "highlight": cells[merchant_name]["status"] == "missing" and any(cells[name]["status"] == "present" for name in competitors)})
-        return entities, rows
+        informative = [row for row in rows if any(cell["status"] == "present" for cell in row["cells"].values())]
+        informative.sort(key=lambda row: (not row["highlight"], row["key"]))
+        return entities, informative[:5]
 
     def get_workspace(self, merchant_id: UUID) -> dict:
         merchant = self.session.get(Merchant, merchant_id)

@@ -28,4 +28,16 @@ describe("parseMobileAnswers", () => {
     expect(parsed[1].needsReview).toBe(true);
     expect(parsed[2].needsReview).toBe(true);
   });
+
+  it("recognizes a shortened target name and ignores descriptive phrases", () => {
+    const parsed = parseMobileAnswers(
+      "Q1：澜沧拉祜族自治县有什么值得去的口腔医疗机构？\n\n1. 澜沧县第一人民医院（口腔科）：公立二甲医院。\n2. 王天佑口腔诊所：本地老牌民营。\n3. 皓雅口腔门诊：规模较大民营综合口腔。",
+      items,
+      "澜沧皓雅口腔门诊部",
+    );
+
+    expect(parsed[0].mentionLevel).toBe("supplementary");
+    expect(parsed[0].competitors).toEqual(["澜沧县第一人民医院（口腔科）", "王天佑口腔诊所"]);
+    expect(parsed[0].competitors).not.toContain("规模较大民营综合口腔");
+  });
 });
