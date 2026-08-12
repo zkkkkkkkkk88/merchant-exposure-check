@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 type MerchantOption = {
   id: string;
@@ -16,6 +16,7 @@ export function MerchantSwitcher({
   merchantId: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <label className="merchant-switch">
@@ -23,8 +24,9 @@ export function MerchantSwitcher({
       <select
         aria-label="切换商家"
         value={merchantId}
-        onChange={(event) => router.push(`/?merchant=${encodeURIComponent(event.target.value)}`)}
+        onChange={(event) => router.push(`${pathname}?merchant=${encodeURIComponent(event.target.value)}`)}
       >
+        {!merchantId && <option value="">请选择商家</option>}
         {merchants.map((merchant) => (
           <option key={merchant.id} value={merchant.id}>
             {merchant.name}{merchant.branch_name ? ` · ${merchant.branch_name}` : ""}

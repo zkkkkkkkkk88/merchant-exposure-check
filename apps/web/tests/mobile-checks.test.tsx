@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import MobileChecksPage from "@/app/mobile-checks/page";
 import { getMerchants, getMobileWorkspace, getMobileValidationSets } from "@/lib/api";
@@ -17,7 +17,19 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("mobile Doubao workspace", () => {
-  it("shows batch entry and keeps mobile evidence separate from Ark", async () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("requires an explicit merchant instead of selecting the first one", async () => {
+    vi.mocked(getMerchants).mockResolvedValue([{ id: "merchant-1", name: "澜沧皓雅口腔门诊部", branch_name: null }]);
+
+    render(await MobileChecksPage({ searchParams: Promise.resolve({}) }));
+
+    expect(screen.getByRole("heading", { name: "请先选择目标商家" })).toBeInTheDocument();
+    expect(getMobileValidationSets).not.toHaveBeenCalled();
+    expect(getMobileWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("shows the three-dialog one-paste workflow", async () => {
     vi.mocked(getMerchants).mockResolvedValue([{ id: "merchant-1", name: "澜沧舒适口腔", branch_name: null }]);
     vi.mocked(getMobileValidationSets).mockResolvedValue([{ id: "set-1", merchant_id: "merchant-1", created_at: "2026-08-12T00:00:00Z", items: [
       { id: "item-1", query_id: "query-1", position: 1, query: { id: "query-1", query_set_id: "qs", text: "澜沧县口碑好的口腔机构有哪些？", category: "geo", reason: "泛推荐", priority: 1, intent_type: "recommendation", fact_keys: [], review_status: "approved", is_enabled: true, created_at: "2026-08-12T00:00:00Z", updated_at: "2026-08-12T00:00:00Z" } },
@@ -27,11 +39,12 @@ describe("mobile Doubao workspace", () => {
     render(await MobileChecksPage({ searchParams: Promise.resolve({ merchant: "merchant-1" }) }));
 
     expect(screen.getByRole("heading", { name: "手机版豆包实测" })).toBeInTheDocument();
-    expect(screen.getByText("与方舟联网检测分开统计")).toBeInTheDocument();
+    expect(screen.getByText(/当前商家：澜沧舒适口腔/)).toBeInTheDocument();
     expect(screen.getByText("澜沧县口碑好的口腔机构有哪些？")).toBeInTheDocument();
-    expect(screen.getByLabelText("批量粘贴问答")).toBeInTheDocument();
-    expect(screen.getByText(/截图是可选证据，不需要每题上传/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "保存并确认本轮" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "一键复制全部问题" })).toBeInTheDocument();
+    expect(screen.getByLabelText("集中粘贴3份回答")).toBeInTheDocument();
+    expect(screen.getByText(/截图仅作可选证据，不需要每题上传/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "统一保存并确认本轮" })).toBeDisabled();
   });
 
   it("renders a prominent target versus competitor source gap", async () => {

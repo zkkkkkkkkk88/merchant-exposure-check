@@ -35,6 +35,7 @@ class QuerySet(Base):
     )
     version: Mapped[int] = mapped_column(Integer)
     generator_name: Mapped[str] = mapped_column(String(80))
+    is_archived: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
     queries: Mapped[list[Query]] = relationship(

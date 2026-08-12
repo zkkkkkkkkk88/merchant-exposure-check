@@ -10,6 +10,9 @@ from app.queries.generator import TemplateQueryGenerator
 from app.queries.models import Query, QuerySet
 from app.queries.rules.restaurant import RestaurantProfile, RestaurantRulePack
 from app.queries.schemas import QueryUpdate
+from app.mobile_checks.models import MobileValidationItem
+from app.reports.models import ManualCheck
+from app.scans.models import QueryResult, ScanRun
 
 
 class QueryNotFoundError(LookupError):
@@ -84,10 +87,40 @@ class QueryLibraryService:
     def list_sets(session: Session, merchant_id: UUID) -> list[QuerySet]:
         statement = (
             select(QuerySet)
-            .where(QuerySet.merchant_id == merchant_id)
+            .where(QuerySet.merchant_id == merchant_id, QuerySet.is_archived.is_(False))
             .order_by(QuerySet.version.desc())
         )
         return list(session.scalars(statement).all())
+
+    @staticmethod
+    def cleanup_legacy_sets(session: Session, merchant_id: UUID) -> dict[str, int]:
+        query_sets = list(session.scalars(
+            select(QuerySet)
+            .where(QuerySet.merchant_id == merchant_id)
+            .order_by(QuerySet.version.desc(), QuerySet.created_at.desc(), QuerySet.id.desc())
+        ))
+        if not query_sets:
+            return {"deleted": 0, "archived": 0, "kept": 0}
+
+        deleted = 0
+        archived = 0
+        for query_set in query_sets[1:]:
+            query_ids = select(Query.id).where(Query.query_set_id == query_set.id)
+            referenced = any((
+                session.scalar(select(ScanRun.id).where(ScanRun.query_set_id == query_set.id).limit(1)),
+                session.scalar(select(QueryResult.id).where(QueryResult.query_id.in_(query_ids)).limit(1)),
+                session.scalar(select(ManualCheck.id).where(ManualCheck.query_id.in_(query_ids)).limit(1)),
+                session.scalar(select(MobileValidationItem.id).where(MobileValidationItem.query_id.in_(query_ids)).limit(1)),
+            ))
+            if referenced:
+                if not query_set.is_archived:
+                    query_set.is_archived = True
+                    archived += 1
+            else:
+                session.delete(query_set)
+                deleted += 1
+        session.commit()
+        return {"deleted": deleted, "archived": archived, "kept": 1}
 
     @staticmethod
     def update_query(session: Session, query_id: UUID, payload: QueryUpdate) -> Query:

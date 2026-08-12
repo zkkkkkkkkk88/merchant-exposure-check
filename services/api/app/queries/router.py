@@ -9,6 +9,7 @@ from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.queries.schemas import (
     QueryGenerateRequest,
     QueryRead,
+    QuerySetCleanupRead,
     QuerySetRead,
     QueryUpdate,
 )
@@ -49,6 +50,15 @@ def list_query_sets(merchant_id: UUID, session: SessionDep) -> list[QuerySetRead
         QuerySetRead.model_validate(query_set)
         for query_set in QueryLibraryService.list_sets(session, merchant_id)
     ]
+
+
+@router.post("/merchants/{merchant_id}/query-sets/cleanup", response_model=QuerySetCleanupRead)
+def cleanup_query_sets(merchant_id: UUID, session: SessionDep) -> QuerySetCleanupRead:
+    if MerchantService.get(session, merchant_id) is None:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+    return QuerySetCleanupRead.model_validate(
+        QueryLibraryService.cleanup_legacy_sets(session, merchant_id)
+    )
 
 
 @router.patch("/queries/{query_id}", response_model=QueryRead)

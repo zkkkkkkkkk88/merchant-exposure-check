@@ -6,9 +6,12 @@ import { getMerchants, getMobileValidationSets, getMobileWorkspace } from "@/lib
 export default async function MobileChecksPage({ searchParams = Promise.resolve({}) }: { searchParams?: Promise<{ merchant?: string }> }) {
   const { merchant: requested } = await searchParams;
   const merchants = await getMerchants();
-  const merchantId = requested ?? merchants[0]?.id;
-  if (!merchantId) return <AppShell><div className="state-page"><h1>手机版豆包实测</h1><p>请先创建商家。</p></div></AppShell>;
-  const [sets, workspace] = await Promise.all([getMobileValidationSets(merchantId), getMobileWorkspace(merchantId)]);
-  const empty = { latestRoundId: null, sourceRoundId: null, metrics: null, entities: [merchants.find((item) => item.id === merchantId)?.name ?? "目标商家"], sourceGaps: [] };
-  return <AppShell><div className="workspace-page wide-page"><header className="page-header"><div><p className="kicker">MOBILE VALIDATION</p><h1>手机版豆包实测</h1><p>与方舟联网检测分开统计</p></div><MerchantSwitcher merchants={merchants} merchantId={merchantId} /></header><MobileCheckWorkspace merchantId={merchantId} validationSet={sets.at(-1) ?? null} workspace={workspace ?? empty} /></div></AppShell>;
+  if (!requested) {
+    return <AppShell><div className="state-page"><h1>请先选择目标商家</h1><p>手机版豆包验证不会自动选择第一家，避免检测错对象。</p>{merchants.length > 0 && <MerchantSwitcher merchants={merchants} merchantId="" />}</div></AppShell>;
+  }
+  const selected = merchants.find((item) => item.id === requested);
+  if (!selected) return <AppShell><div className="state-page"><h1>目标商家不存在</h1><p>请重新选择商家。</p><MerchantSwitcher merchants={merchants} merchantId="" /></div></AppShell>;
+  const [sets, workspace] = await Promise.all([getMobileValidationSets(requested), getMobileWorkspace(requested)]);
+  const empty = { latestRoundId: null, sourceRoundId: null, metrics: null, entities: [selected.name], sourceGaps: [] };
+  return <AppShell><div className="workspace-page wide-page"><header className="page-header"><div><p className="kicker">MOBILE VALIDATION</p><h1>手机版豆包实测</h1><p>当前商家：{selected.name} · 3个独立对话</p></div><MerchantSwitcher merchants={merchants} merchantId={requested} /></header><MobileCheckWorkspace merchantId={requested} merchantName={selected.name} validationSet={sets.at(-1) ?? null} workspace={workspace ?? empty} /></div></AppShell>;
 }

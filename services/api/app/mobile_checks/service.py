@@ -25,14 +25,22 @@ class MobileCheckService:
         self.session = session
 
     def _approved_queries(self, merchant_id: UUID) -> list[Query]:
+        latest_query_set_id = self.session.scalar(
+            select(QuerySet.id)
+            .where(QuerySet.merchant_id == merchant_id)
+            .order_by(QuerySet.version.desc(), QuerySet.created_at.desc(), QuerySet.id.desc())
+            .limit(1)
+        )
+        if latest_query_set_id is None:
+            return []
         return list(
             self.session.scalars(
                 select(Query)
-                .join(QuerySet)
                 .where(
-                    QuerySet.merchant_id == merchant_id,
+                    Query.query_set_id == latest_query_set_id,
                     Query.review_status == "approved",
                     Query.is_enabled.is_(True),
+                    Query.intent_type == "recommendation",
                 )
                 .order_by(Query.priority, Query.created_at, Query.id)
             )
@@ -46,22 +54,17 @@ class MobileCheckService:
             if query.category not in seen_categories:
                 selected.append(query)
                 seen_categories.add(query.category)
-        for intent in ("recommendation", "verification"):
-            if not any(query.intent_type == intent for query in selected):
-                match = next((query for query in queries if query.intent_type == intent), None)
-                if match is not None and match not in selected:
-                    selected.append(match)
         for query in queries:
             if query not in selected:
                 selected.append(query)
-            if len(selected) == 15:
+            if len(selected) == 3:
                 break
-        return selected[:15]
+        return selected[:3]
 
     def create_validation_set(self, merchant_id: UUID) -> MobileValidationSet:
         queries = self._approved_queries(merchant_id)
-        if not queries:
-            raise NoApprovedQueriesError("merchant has no approved enabled queries")
+        if len(queries) < 3:
+            raise NoApprovedQueriesError("latest query set needs three approved enabled recommendation queries")
         validation_set = MobileValidationSet(merchant_id=merchant_id)
         validation_set.items = [
             MobileValidationItem(query_id=query.id, position=index)

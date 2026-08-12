@@ -57,5 +57,12 @@ class QuerySetRead(BaseModel):
     merchant_id: UUID
     version: int
     generator_name: str
+    is_archived: bool
     created_at: datetime
     queries: list[QueryRead]
+
+
+class QuerySetCleanupRead(BaseModel):
+    deleted: int
+    archived: int
+    kept: int

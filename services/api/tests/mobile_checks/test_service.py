@@ -53,28 +53,45 @@ def test_create_validation_set_uses_only_approved_enabled_queries_and_stays_fixe
     created = MobileCheckService(db_session).create_validation_set(merchant.id)
     repeated = MobileCheckService(db_session).get_validation_set(created.id, merchant.id)
 
-    assert 8 <= len(created.items) <= 15
+    assert len(created.items) == 3
     assert {item.query.review_status for item in created.items} == {"approved"}
     assert {item.query.is_enabled for item in created.items} == {True}
-    assert {item.query.intent_type for item in created.items} == {
-        "recommendation",
-        "verification",
-    }
+    assert {item.query.intent_type for item in created.items} == {"recommendation"}
     assert [item.query_id for item in repeated.items] == [
         item.query_id for item in created.items
     ]
-    assert len({item.query.category for item in created.items[:6]}) == 6
+    assert len({item.query.category for item in created.items}) == 3
 
 
-def test_create_validation_set_keeps_all_available_queries_when_fewer_than_eight(
+def test_create_validation_set_rejects_when_latest_set_has_fewer_than_three_recommendations(
     db_session: Session,
 ) -> None:
     merchant = add_merchant(db_session)
-    add_queries(db_session, merchant, 6)
+    query_set = QuerySet(merchant_id=merchant.id, version=1, generator_name="test")
+    db_session.add(query_set)
+    db_session.flush()
+    for index in range(2):
+        db_session.add(Query(query_set_id=query_set.id, text=f"recommend {index}", category="geo", reason="test", priority=1, intent_type="recommendation", review_status="approved", is_enabled=True))
+    db_session.commit()
+
+    with pytest.raises(NoApprovedQueriesError):
+        MobileCheckService(db_session).create_validation_set(merchant.id)
+
+
+def test_create_validation_set_uses_only_newest_query_set(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    old_set = add_queries(db_session, merchant, 10)
+    newest = QuerySet(merchant_id=merchant.id, version=2, generator_name="test")
+    db_session.add(newest)
+    db_session.flush()
+    for index, category in enumerate(("geo", "category", "occasion")):
+        db_session.add(Query(query_set_id=newest.id, text=f"new {index}", category=category, reason="newest", priority=1, intent_type="recommendation", review_status="approved", is_enabled=True))
+    db_session.commit()
 
     created = MobileCheckService(db_session).create_validation_set(merchant.id)
 
-    assert len(created.items) == 4
+    assert {item.query.query_set_id for item in created.items} == {newest.id}
+    assert old_set.id not in {item.query.query_set_id for item in created.items}
 
 
 def test_create_validation_set_rejects_merchant_without_approved_queries(

@@ -13,6 +13,8 @@ from app.merchants.schemas import (
     MerchantProfileWrite,
 )
 from app.merchants.service import MerchantService
+from app.mobile_checks.models import MobileValidationItem, MobileValidationSet
+from app.queries.models import Query, QuerySet
 
 
 @pytest.fixture
@@ -100,3 +102,37 @@ def test_generate_requires_confirmed_city_and_precise_category(
 
     assert response.status_code == 409
     assert "confirmed city and precise category" in response.json()["detail"]
+
+
+def test_cleanup_deletes_unused_old_set_and_archives_referenced_old_set(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="cleanup merchant", city="city", industry="oral care"),
+    )
+    sets = []
+    for version in (1, 2, 3):
+        query_set = QuerySet(merchant_id=merchant.id, version=version, generator_name="test")
+        db_session.add(query_set)
+        db_session.flush()
+        query = Query(query_set_id=query_set.id, text=f"question {version}", category="geo", reason="test", priority=1)
+        db_session.add(query)
+        db_session.flush()
+        sets.append((query_set, query))
+    validation = MobileValidationSet(merchant_id=merchant.id)
+    db_session.add(validation)
+    db_session.flush()
+    db_session.add(MobileValidationItem(validation_set_id=validation.id, query_id=sets[0][1].id, position=1))
+    db_session.commit()
+
+    response = client.post(f"/merchants/{merchant.id}/query-sets/cleanup")
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted": 1, "archived": 1, "kept": 1}
+    assert db_session.get(QuerySet, sets[0][0].id).is_archived is True
+    assert db_session.get(QuerySet, sets[1][0].id) is None
+    assert db_session.get(QuerySet, sets[2][0].id).is_archived is False
+    listed = client.get(f"/merchants/{merchant.id}/query-sets").json()
+    assert [item["version"] for item in listed] == [3]
