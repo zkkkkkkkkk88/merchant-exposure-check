@@ -9,6 +9,8 @@ import type {
   QueryUpdateData,
   ReportData,
   ScanRunData,
+  MobileValidationSetData,
+  MobileWorkspaceData,
 } from "./contracts";
 import type { MerchantPayload } from "@/components/merchant-form";
 
@@ -188,4 +190,13 @@ export function getHistory(
     `/merchants/${encodeURIComponent(merchantId)}/history?${query.toString()}`,
     "暂时无法读取历史对比。",
   );
+}
+
+export async function getMobileValidationSets(merchantId: string): Promise<MobileValidationSetData[]> {
+  const data = await readJson<MobileValidationSetData[]>(`/merchants/${encodeURIComponent(merchantId)}/mobile-validation-sets`, "暂时无法读取手机验证题集。");
+  return data ?? [];
+}
+
+export function getMobileWorkspace(merchantId: string): Promise<MobileWorkspaceData | null> {
+  return readJson<MobileWorkspaceData>(`/merchants/${encodeURIComponent(merchantId)}/mobile-checks/workspace`, "暂时无法读取手机版豆包实测。");
 }

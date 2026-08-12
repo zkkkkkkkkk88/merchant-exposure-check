@@ -302,3 +302,26 @@ tbody th { font-weight: 600; }
   .profile-fact-row { grid-template-columns: 1fr; }
   .period-selectors > span { display: none; }
 }
+
+.mobile-check-layout { display: grid; gap: 24px; }
+.workspace-card { background: var(--surface, #fff); border: 1px solid rgba(45, 38, 32, .12); border-radius: 18px; padding: 24px; }
+.workspace-card > header { display: flex; justify-content: space-between; align-items: start; margin-bottom: 18px; }
+.mobile-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.mobile-metrics article { background: #27231f; color: #fff; border-radius: 16px; padding: 18px; display: grid; gap: 8px; }
+.mobile-metrics strong { font-size: 30px; }
+.mobile-question-list { display: grid; gap: 10px; padding-left: 24px; }
+.mobile-question-list li span { display: inline-block; min-width: 72px; margin-right: 12px; color: #a34f35; font-size: 12px; text-transform: uppercase; }
+.mobile-entry { display: grid; gap: 18px; }
+.mobile-entry label { display: grid; gap: 8px; font-weight: 600; }
+.mobile-entry input, .mobile-entry textarea, .mobile-entry select { border: 1px solid rgba(45, 38, 32, .18); border-radius: 10px; padding: 11px 12px; font: inherit; }
+.mobile-entry .check-row { display: flex; align-items: center; flex-direction: row; font-weight: 500; }
+.mobile-entry fieldset { border: 1px solid rgba(45, 38, 32, .12); border-radius: 14px; padding: 16px; }
+.quick-confirm { display: grid; grid-template-columns: minmax(280px, 1fr) 150px 220px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(45, 38, 32, .08); }
+.source-gap-wrap { overflow-x: auto; }
+.source-gap-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+.source-gap-table th, .source-gap-table td { border-bottom: 1px solid rgba(45, 38, 32, .1); padding: 14px; vertical-align: top; text-align: left; }
+.source-gap-table th small, .source-gap-table td span { display: block; margin-top: 6px; color: #725c50; font-weight: 400; }
+.source-gap-highlight { background: #fff1e8; }
+.source-gap-highlight th small { color: #a33b24; font-weight: 700; }
+.source-gap-table em { color: #8a6758; }
+@media (max-width: 800px) { .mobile-metrics { grid-template-columns: repeat(2, 1fr); } .quick-confirm { grid-template-columns: 1fr; } }

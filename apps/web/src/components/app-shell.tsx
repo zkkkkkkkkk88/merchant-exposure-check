@@ -10,6 +10,7 @@ const navigation = [
   ["总览", "/"],
   ["商家画像", "/merchants"],
   ["问题策略", "/queries"],
+  ["手机实测", "/mobile-checks"],
   ["检测", "/scans"],
   ["历史", "/history"],
 ] as const;

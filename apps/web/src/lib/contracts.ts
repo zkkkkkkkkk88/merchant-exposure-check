@@ -204,3 +204,18 @@ export interface DashboardData {
     }>;
   }>;
 }
+
+export interface MobileValidationSetData {
+  id: string;
+  merchant_id: string;
+  created_at: string;
+  items: Array<{ id: string; query_id: string; position: number; query: QueryData }>;
+}
+
+export interface MobileWorkspaceData {
+  latestRoundId: string | null;
+  sourceRoundId: string | null;
+  metrics: null | { confirmedCount: number; mentionRate: number; primaryRate: number; categoryCoverageRate: number; informationAccuracyRate: number; sourceCoverageRate: number };
+  entities: string[];
+  sourceGaps: Array<{ key: string; label: string; highlight: boolean; cells: Record<string, { status: "present" | "missing" | "needs_review"; evidence: string[] }> }>;
+}
