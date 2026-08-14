@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/app-shell";
@@ -18,6 +18,7 @@ vi.mock("next/navigation", () => ({
 
 beforeEach(() => {
   navigation.pathname = "/merchants/m1";
+  window.history.replaceState({}, "", "/");
   navigation.back.mockReset();
   navigation.push.mockReset();
   vi.stubGlobal("fetch", vi.fn().mockImplementation((input: string | URL | Request) => {
@@ -32,6 +33,9 @@ beforeEach(() => {
             { key: "profile", label: "商家画像", status: "completed", href: "/merchants/m1" },
             { key: "queries", label: "问题策略", status: "completed", href: "/queries?merchant=m1" },
             { key: "audit", label: "平台查缺", status: "ready", href: "/platform-audits?merchant=m1" },
+            { key: "mobile", label: "手机实测", status: "pending", href: "/mobile-checks?merchant=m1" },
+            { key: "action", label: "执行优化", status: "pending", href: "/mobile-checks?merchant=m1#improvement-playbook" },
+            { key: "retest", label: "同题复测", status: "pending", href: "/mobile-checks?merchant=m1#retest-comparison" },
           ],
         }
       : {
@@ -111,4 +115,35 @@ it("shows merchant journey progress and exposes the full navigation on mobile", 
     "href",
     "/delivery-report?merchant=m1",
   );
+});
+
+it("marks the journey step that matches the current page", async () => {
+  navigation.pathname = "/platform-audits";
+  navigation.merchant = "m1";
+  render(<AppShell><p>内容</p></AppShell>);
+
+  const progress = await screen.findByLabelText("商家提升进度");
+  const audit = within(progress).getByRole("link", { name: /平台查缺/ });
+  const mobile = within(progress).getByRole("link", { name: /手机实测/ });
+
+  expect(audit).toHaveAttribute("aria-current", "step");
+  expect(audit.closest("li")).toHaveClass("journey-current");
+  expect(mobile).not.toHaveAttribute("aria-current");
+});
+
+it("uses the mobile-check hash to distinguish action from retest", async () => {
+  navigation.pathname = "/mobile-checks";
+  navigation.merchant = "m1";
+  window.history.replaceState({}, "", "/mobile-checks?merchant=m1#improvement-playbook");
+  render(<AppShell><p>内容</p></AppShell>);
+
+  const progress = await screen.findByLabelText("商家提升进度");
+  expect(within(progress).getByRole("link", { name: /执行优化/ })).toHaveAttribute("aria-current", "step");
+  expect(within(progress).getByRole("link", { name: /手机实测/ })).not.toHaveAttribute("aria-current");
+  expect(within(progress).getByRole("link", { name: /同题复测/ })).not.toHaveAttribute("aria-current");
+
+  window.history.replaceState({}, "", "/mobile-checks?merchant=m1#retest-comparison");
+  fireEvent(window, new HashChangeEvent("hashchange"));
+  expect(within(progress).getByRole("link", { name: /同题复测/ })).toHaveAttribute("aria-current", "step");
+  expect(within(progress).getByRole("link", { name: /执行优化/ })).not.toHaveAttribute("aria-current");
 });
