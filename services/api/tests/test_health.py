@@ -31,6 +31,7 @@ def test_system_status_reports_runtime_and_configured_integrations(
         database_url="sqlite+pysqlite:///:memory:",
         ark_api_key=SecretStr("ark-test"),
         amap_key=SecretStr("amap-test"),
+        tencent_map_key=SecretStr(""),
         runtime_dir=tmp_path,
     )
 

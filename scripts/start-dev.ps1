@@ -87,7 +87,7 @@ try {
     Write-Host "Project started:"
     Write-Host "  Web: http://127.0.0.1:3000"
     Write-Host "  API: http://127.0.0.1:8000/docs"
-    Write-Host "Stop with: .\scripts\stop-dev.ps1"
+    Write-Host "Stop with: .\scripts\stop-dev.cmd"
 }
 catch {
     foreach ($process in $started) {

@@ -9,13 +9,13 @@
 首次运行仍需按照下方步骤安装依赖，并在 `services/api/.env` 中填写配置。之后在项目根目录运行：
 
 ```powershell
-.\scripts\start-dev.ps1
+.\scripts\start-dev.cmd
 ```
 
 脚本会先执行数据库迁移，再统一启动 API、后台 worker 和前端，并等待服务就绪。停止由脚本启动的进程：
 
 ```powershell
-.\scripts\stop-dev.ps1
+.\scripts\stop-dev.cmd
 ```
 
 页面左下角会显示 API、后台任务以及豆包、高德和腾讯地图的配置状态。普通开发命令固定使用 Webpack，避免工作树共享 `node_modules` 时触发 Turbopack 软链接错误。
