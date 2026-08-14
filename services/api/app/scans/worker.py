@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable, Mapping
+from contextlib import suppress
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 from uuid import UUID
@@ -9,9 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import Settings, get_settings
+from app.core.health import write_worker_heartbeat
 from app.db.session import SessionLocal
 from app.merchants import models as merchant_models  # noqa: F401
 from app.merchants.local_context import process_next_local_context
+from app.platform_audits import models as platform_audit_models  # noqa: F401
+from app.platform_audits.amap import AmapClient
+from app.platform_audits.tencent_maps import TencentMapClient
+from app.platform_audits.worker import process_next_platform_audit
 from app.queries.models import Query
 from app.scans.adapters.ark import ArkSearchAdapter
 from app.scans.adapters.base import (
@@ -183,12 +189,31 @@ async def process_next_scan(
 
 
 async def run_worker(poll_interval: float = 2.0) -> None:
-    adapters = build_adapter_registry(get_settings())
-    while True:
-        context_id = await process_next_local_context(SessionLocal, adapters.get("ark"))
-        processed_id = await process_next_scan(SessionLocal, adapters)
-        if processed_id is None and context_id is None:
-            await asyncio.sleep(poll_interval)
+    settings = get_settings()
+    adapters = build_adapter_registry(settings)
+    amap_key = settings.amap_key.get_secret_value()
+    amap = AmapClient(amap_key) if amap_key else None
+    tencent_key = settings.tencent_map_key.get_secret_value()
+    tencent_maps = TencentMapClient(tencent_key) if tencent_key else None
+    async def keep_heartbeat() -> None:
+        while True:
+            write_worker_heartbeat(settings.runtime_dir)
+            await asyncio.sleep(min(poll_interval, 5.0))
+
+    heartbeat_task = asyncio.create_task(keep_heartbeat())
+    try:
+        while True:
+            context_id = await process_next_local_context(SessionLocal, adapters.get("ark"))
+            audit_id = await process_next_platform_audit(
+                SessionLocal, adapters.get("ark"), amap, tencent_maps
+            )
+            processed_id = await process_next_scan(SessionLocal, adapters)
+            if processed_id is None and context_id is None and audit_id is None:
+                await asyncio.sleep(poll_interval)
+    finally:
+        heartbeat_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await heartbeat_task
 
 
 def main() -> None:

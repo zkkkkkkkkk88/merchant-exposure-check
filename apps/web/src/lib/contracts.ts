@@ -84,6 +84,7 @@ export interface CitationData {
 export interface QueryResultData {
   id: string;
   query_id: string;
+  query_text?: string | null;
   status: "success" | "failed";
   raw_text: string | null;
   adapter_name: string;
@@ -218,4 +219,50 @@ export interface MobileWorkspaceData {
   metrics: null | { confirmedCount: number; mentionRate: number; primaryRate: number; categoryCoverageRate: number; informationAccuracyRate: number; sourceCoverageRate: number };
   entities: string[];
   sourceGaps: Array<{ key: string; label: string; highlight: boolean; cells: Record<string, { status: "present" | "missing" | "needs_review"; evidence: string[] }> }>;
+  latestRoundAnswers?: Array<{ position: number; question: string; answer: string | null; mentionLevel: "none" | "supplementary" | "primary"; mentionLabel: string; targetPosition: number | null }>;
+  recommendationPlaybook?: null | {
+    diagnosis: {
+      summary: string;
+      mentionedCount: number;
+      totalCount: number;
+      questions: Array<{ position: number; text: string; mentionLevel: "none" | "supplementary" | "primary"; mentionLabel: string; targetPosition: number | null }>;
+    };
+    competitorReasons: Array<{ name: string; questionCount: number; reasons: Array<{ text: string; questionPositions: number[]; confidence: "confirmed" | "answer_only" | "needs_verification" }> }>;
+    actions: Array<{ key: string; title: string; why: string; steps: string[]; materials: string[]; publishTargets: Array<{ priority: number; channel: string; content: string }>; linkEntryHint: string; examples: string[]; completionCriteria: string; confidence: "confirmed" | "answer_only" | "needs_verification" }>;
+    comparison: null | {
+      previousRoundId: string;
+      currentRoundId: string;
+      mentionRateBefore: number;
+      mentionRateAfter: number;
+      primaryRateBefore: number;
+      primaryRateAfter: number;
+      questions: Array<{ text: string; before: "none" | "supplementary" | "primary"; after: "none" | "supplementary" | "primary"; change: "improved" | "declined" | "unchanged" }>;
+    };
+    disclaimer: string;
+  };
+}
+
+export type PlatformAuditStatus = "complete" | "incomplete" | "conflict" | "not_found" | "needs_review";
+
+export interface PlatformAuditResultData {
+  id: string;
+  platform_key: string;
+  platform_name: string;
+  status: PlatformAuditStatus;
+  found: boolean;
+  fields: Record<string, unknown>;
+  issues: string[];
+  evidence: Array<{ url?: string; title?: string | null; snippet?: string | null }>;
+  checked_at: string;
+}
+
+export interface PlatformAuditRunData {
+  id: string;
+  merchant_id: string;
+  status: "queued" | "running" | "completed" | "partial" | "failed";
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  error_message: string | null;
+  platforms: PlatformAuditResultData[];
 }

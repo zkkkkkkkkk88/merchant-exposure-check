@@ -12,6 +12,7 @@ from app.mobile_checks.schemas import (
     MobileEvidenceRead,
     MobileRoundCreate,
     MobileRoundRead,
+    MobileValidationSetCreate,
     MobileValidationSetRead,
     MobileWorkspaceRead,
 )
@@ -27,6 +28,14 @@ MAX_EVIDENCE_BYTES = 10 * 1024 * 1024
 def create_validation_set(merchant_id: UUID, session: SessionDep):
     try:
         return MobileCheckService(session).create_validation_set(merchant_id)
+    except NoApprovedQueriesError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@router.post("/merchants/{merchant_id}/mobile-validation-sets/select", response_model=MobileValidationSetRead, status_code=status.HTTP_201_CREATED)
+def select_validation_set(merchant_id: UUID, payload: MobileValidationSetCreate, session: SessionDep):
+    try:
+        return MobileCheckService(session).create_validation_set(merchant_id, payload.query_ids)
     except NoApprovedQueriesError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

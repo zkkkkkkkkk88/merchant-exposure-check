@@ -4,6 +4,22 @@
 
 ## 本地运行
 
+### Windows 一键启动
+
+首次运行仍需按照下方步骤安装依赖，并在 `services/api/.env` 中填写配置。之后在项目根目录运行：
+
+```powershell
+.\scripts\start-dev.ps1
+```
+
+脚本会先执行数据库迁移，再统一启动 API、后台 worker 和前端，并等待服务就绪。停止由脚本启动的进程：
+
+```powershell
+.\scripts\stop-dev.ps1
+```
+
+页面左下角会显示 API、后台任务以及豆包、高德和腾讯地图的配置状态。普通开发命令固定使用 Webpack，避免工作树共享 `node_modules` 时触发 Turbopack 软链接错误。
+
 项目正常运行需要三个独立进程，建议分别打开三个 PowerShell 窗口。API 负责保存和查询数据，worker 负责后台调用方舟，前端负责页面交互。
 
 后端：

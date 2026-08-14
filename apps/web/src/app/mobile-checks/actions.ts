@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { selectMobileValidationSet } from "@/lib/api";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 const sourceTypes: Record<string, string> = { 机构介绍: "profile", 工商: "registry", 招聘: "recruitment", 抖音: "douyin", 本地媒体: "local_media", 政府医院: "government", 行业内容: "industry" };
@@ -9,6 +10,12 @@ export async function createMobileValidationSet(formData: FormData): Promise<voi
   const merchantId = String(formData.get("merchantId") ?? "");
   const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-validation-sets`, { method: "POST" });
   if (!response.ok) throw new Error("创建手机验证题集失败，请先审核并启用问题");
+  redirect(`/mobile-checks?merchant=${encodeURIComponent(merchantId)}`);
+}
+
+export async function selectMobileValidationQuestions(formData: FormData): Promise<void> {
+  const merchantId = String(formData.get("merchantId") ?? "");
+  await selectMobileValidationSet(merchantId, formData.getAll("queryIds").map(String));
   redirect(`/mobile-checks?merchant=${encodeURIComponent(merchantId)}`);
 }
 

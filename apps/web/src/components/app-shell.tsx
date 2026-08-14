@@ -5,10 +5,12 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, type ReactNode } from "react";
 
 import { BackLink } from "./back-link";
+import { ServiceStatus } from "./service-status";
 
 const navigation = [
   ["总览", "/"],
   ["商家画像", "/merchants"],
+  ["平台查缺", "/platform-audits"],
   ["问题策略", "/queries"],
   ["手机实测", "/mobile-checks"],
   ["检测", "/scans"],
@@ -62,11 +64,11 @@ function ShellContent({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
-        <div className="rail-note"><span className="live-dot" />商家可见性档案</div>
+        <ServiceStatus />
       </aside>
       <header className="mobile-header">
         <Link className="brand-mark" href={withMerchant("/")}><span>见</span><strong>见序</strong></Link>
-        <Link href={withMerchant("/merchants")}>商家画像</Link>
+        <div className="mobile-header-actions"><ServiceStatus compact /><Link href={withMerchant("/merchants")}>商家画像</Link></div>
       </header>
       <main className="app-content">
         {pathname !== "/" && <div className="global-back"><BackLink fallbackHref={fallbackFor(pathname)} /></div>}

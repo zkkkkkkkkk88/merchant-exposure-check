@@ -80,6 +80,7 @@ const realRun = {
   results: [{
     id: "result-real",
     query_id: "query-real",
+    query_text: "真实检测问题",
     status: "success" as const,
     raw_text: "真实联网回答",
     adapter_name: "ark",
@@ -119,6 +120,17 @@ it("renders raw scan evidence returned by the API", async () => {
   expect(screen.getByText("真实检测问题")).toBeVisible();
   expect(screen.queryByText(/钱江新城/)).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "查看分析报告" })).toHaveAttribute("href", "/reports/scan-real");
+});
+
+it("renders the question stored with a scan when its query set is archived", async () => {
+  vi.mocked(getScanRun).mockResolvedValue(realRun);
+  vi.mocked(getMerchant).mockResolvedValue(realMerchant);
+  vi.mocked(getQuerySets).mockResolvedValue([]);
+
+  render(await ScanPage({ params: Promise.resolve({ id: "scan-real" }) }));
+
+  expect(screen.getByText("真实检测问题")).toBeVisible();
+  expect(screen.queryByText("query-real")).not.toBeInTheDocument();
 });
 
 it("keeps a queued scan in the background without exposing a premature report", async () => {

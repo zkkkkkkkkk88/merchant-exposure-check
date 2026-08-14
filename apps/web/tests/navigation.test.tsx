@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/app-shell";
 
@@ -20,7 +20,16 @@ beforeEach(() => {
   navigation.pathname = "/merchants/m1";
   navigation.back.mockReset();
   navigation.push.mockReset();
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    status: "ok",
+    api: "ok",
+    database: "ok",
+    worker: "ok",
+    integrations: { doubao: true, amap: true, tencent_map: false },
+  }), { status: 200 })));
 });
+
+afterEach(() => vi.unstubAllGlobals());
 
 it("marks the current navigation section instead of always highlighting overview", () => {
   render(<AppShell><p>内容</p></AppShell>);
@@ -55,4 +64,16 @@ it("provides a back control on child pages", () => {
 
   expect(navigation.push).toHaveBeenCalledWith("/merchants");
   expect(navigation.back).not.toHaveBeenCalled();
+});
+
+it("shows whether the API, worker and required integrations are ready", async () => {
+  render(<AppShell><p>内容</p></AppShell>);
+
+  await waitFor(() => expect(screen.getByText("系统可用")).toBeVisible());
+  fireEvent.click(screen.getByText("系统可用"));
+  expect(screen.getByText("API 正常")).toBeVisible();
+  expect(screen.getByText("后台任务正常")).toBeVisible();
+  expect(screen.getByText("豆包已配置")).toBeVisible();
+  expect(screen.getByText("高德已配置")).toBeVisible();
+  expect(screen.getByText("腾讯地图未配置")).toBeVisible();
 });

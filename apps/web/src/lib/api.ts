@@ -11,6 +11,7 @@ import type {
   ScanRunData,
   MobileValidationSetData,
   MobileWorkspaceData,
+  PlatformAuditRunData,
 } from "./contracts";
 import type { MerchantPayload } from "@/components/merchant-form";
 
@@ -104,7 +105,7 @@ export async function replaceMerchantProfile(
 
 export async function generateQuerySet(
   merchantId: string,
-  count = 12,
+  count = 15,
 ): Promise<{ id: string }> {
   const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/query-sets/generate`, {
     method: "POST",
@@ -199,4 +200,21 @@ export async function getMobileValidationSets(merchantId: string): Promise<Mobil
 
 export function getMobileWorkspace(merchantId: string): Promise<MobileWorkspaceData | null> {
   return readJson<MobileWorkspaceData>(`/merchants/${encodeURIComponent(merchantId)}/mobile-checks/workspace`, "暂时无法读取手机版豆包实测。");
+}
+
+export function getLatestPlatformAudit(merchantId: string): Promise<PlatformAuditRunData | null> {
+  return readJson<PlatformAuditRunData>(
+    `/merchants/${encodeURIComponent(merchantId)}/platform-audits/latest`,
+    "暂时无法读取平台查缺结果。",
+  );
+}
+
+export async function selectMobileValidationSet(merchantId: string, queryIds: string[]): Promise<MobileValidationSetData> {
+  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-validation-sets/select`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query_ids: queryIds }),
+  });
+  if (!response.ok) throw new ApiError(response.status, "保存本轮3题失败，请确认恰好选择3道已审核的推荐题。");
+  return response.json() as Promise<MobileValidationSetData>;
 }

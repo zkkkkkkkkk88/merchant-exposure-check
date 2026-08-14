@@ -1,17 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createMobileValidationSet, saveMobileRound } from "@/app/mobile-checks/actions";
-import type { MobileValidationSetData, MobileWorkspaceData } from "@/lib/contracts";
+import Link from "next/link";
+import { createMobileValidationSet, saveMobileRound, selectMobileValidationQuestions } from "@/app/mobile-checks/actions";
+import type { MobileValidationSetData, MobileWorkspaceData, QueryData } from "@/lib/contracts";
 import { parseMobileAnswers } from "@/lib/mobile-answer-parser";
 import { SourceGapTable } from "./source-gap-table";
+import { MobileRecommendationPlaybook } from "./mobile-recommendation-playbook";
+import { LatestMobileRoundAnswers } from "./latest-mobile-round-answers";
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
-export function MobileCheckWorkspace({ merchantId, merchantName, validationSet, workspace }: { merchantId: string; merchantName: string; validationSet: MobileValidationSetData | null; workspace: MobileWorkspaceData }) {
+export function MobileCheckWorkspace({ candidates, merchantId, merchantName, validationSet, workspace }: { candidates: QueryData[]; merchantId: string; merchantName: string; validationSet: MobileValidationSetData | null; workspace: MobileWorkspaceData }) {
   const [rawText, setRawText] = useState("");
   const [parsed, setParsed] = useState(false);
   const [entryOpen, setEntryOpen] = useState(!workspace.latestRoundId);
+  const [selectorOpen, setSelectorOpen] = useState(false);
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>(() => {
+    const candidateIds = new Set(candidates.map((query) => query.id));
+    return validationSet?.items.map((item) => item.query_id).filter((queryId) => candidateIds.has(queryId)) ?? [];
+  });
   const drafts = useMemo(() => validationSet ? parseMobileAnswers(rawText, validationSet.items, merchantName) : [], [rawText, validationSet, merchantName]);
   const copyQuestions = async () => {
     if (!validationSet) return;
@@ -19,12 +27,14 @@ export function MobileCheckWorkspace({ merchantId, merchantName, validationSet, 
   };
 
   return <div className="mobile-check-layout">
-    {workspace.metrics && <section className="mobile-metrics" aria-label="手机版实测指标"><article><span>提及率</span><strong>{percent(workspace.metrics.mentionRate)}</strong></article><article><span>首批推荐率</span><strong>{percent(workspace.metrics.primaryRate)}</strong></article><article><span>场景覆盖率</span><strong>{percent(workspace.metrics.categoryCoverageRate)}</strong></article><article><span>信息准确率</span><strong>{percent(workspace.metrics.informationAccuracyRate)}</strong></article></section>}
-    <section className="workspace-card"><header><div><p className="kicker">THREE DIALOGS</p><h2>3个独立豆包对话</h2></div><span>{validationSet?.items.length ?? 0} 道</span></header>
-      {validationSet ? <><p className="workflow-note">请分别开启3个新对话，每个对话只问一道，避免上下文影响推荐结果。</p><ol className="mobile-question-list">{validationSet.items.map((item) => <li key={item.id}><span>Q{item.position}</span>{item.query.text}</li>)}</ol><button className="button secondary" type="button" onClick={copyQuestions}>一键复制全部问题</button></> : <div className="empty-panel"><p>最新版题库需要至少3道已审核并启用的推荐问题。</p><form action={createMobileValidationSet}><input name="merchantId" type="hidden" value={merchantId} /><button className="button primary" type="submit">创建3题验证集</button></form></div>}
-    </section>
+    {workspace.metrics && <section className="previous-results"><header><div><p className="kicker">PREVIOUS RESULT</p><h2>上一轮有效结果</h2></div><span>已确认 {workspace.metrics.confirmedCount} 道</span></header><div className="mobile-metrics" aria-label="手机版实测指标"><article><span>提及率</span><strong>{percent(workspace.metrics.mentionRate)}</strong></article><article><span>首批推荐率</span><strong>{percent(workspace.metrics.primaryRate)}</strong></article><article><span>场景覆盖率</span><strong>{percent(workspace.metrics.categoryCoverageRate)}</strong></article><article><span>信息准确率</span><strong>{percent(workspace.metrics.informationAccuracyRate)}</strong></article></div></section>}
+    <nav className="mobile-stepper" aria-label="本轮手机实测步骤"><span className={validationSet ? "done" : "active"}>1 选择3题</span><span className={entryOpen ? "active" : workspace.latestRoundId ? "done" : ""}>2 录入回答</span><span className={parsed ? "active" : workspace.latestRoundId ? "done" : ""}>3 核对异常</span><span className={workspace.latestRoundId && !entryOpen ? "active" : ""}>4 查看建议</span></nav>
+    {(!workspace.latestRoundId || entryOpen) && <section className="workspace-card"><header><div><p className="kicker">THREE DIALOGS</p><h2>本轮3个独立豆包对话</h2></div><span>{validationSet?.items.length ?? 0} 道</span></header>
+      {validationSet ? <><p className="workflow-note">请分别开启3个新对话，每个对话只问一道，避免上下文影响推荐结果。</p><p className="sample-count">候选题库 {candidates.length} 道 · 本轮抽样 {validationSet.items.length} 道</p><ol className="mobile-question-list">{validationSet.items.map((item) => <li key={item.id}><span>Q{item.position}</span>{item.query.text}</li>)}</ol><div className="mobile-question-actions"><button className="button secondary" type="button" onClick={copyQuestions}>一键复制全部问题</button><button className="text-button" type="button" onClick={() => setSelectorOpen((open) => !open)}>更换本轮3题</button></div></> : <div className="empty-panel"><p>最新版题库需要至少3道已审核并启用的推荐问题。</p><form action={createMobileValidationSet}><input name="merchantId" type="hidden" value={merchantId} /><button className="button primary" type="submit">创建3题验证集</button></form></div>}
+      {selectorOpen && <form action={selectMobileValidationQuestions} className="mobile-question-selector"><input name="merchantId" type="hidden" value={merchantId} /><h3>从候选题库选择3题</h3><p>完整检测仍使用全部已启用问题；这里只决定下一轮手机人工实测的3题。</p><div>{candidates.map((query) => <label key={query.id}><input checked={selectedQuestions.includes(query.id)} name="queryIds" type="checkbox" value={query.id} onChange={(event) => setSelectedQuestions((items) => event.target.checked ? [...items, query.id].slice(-3) : items.filter((id) => id !== query.id))} />{query.text}</label>)}</div><button className="button primary" disabled={selectedQuestions.length !== 3} type="submit">保存这3题</button></form>}
+    </section>}
     {workspace.latestRoundId && !entryOpen && <section className="workspace-card round-complete">
-      <div><p className="kicker">ROUND COMPLETE</p><h2>上一轮已保存成功</h2><p>结果已经计入上方指标。需要重新测试时，再开始新一轮。</p></div>
+      <div><p className="kicker">ROUND COMPLETE</p><h2>上一轮已保存成功</h2><p>结果已经计入上方指标。需要重新测试时，再开始新一轮。</p><LatestMobileRoundAnswers answers={workspace.latestRoundAnswers} /></div>
       <button className="button primary" type="button" onClick={() => setEntryOpen(true)}>开始新一轮</button>
     </section>}
     {validationSet && entryOpen && <form className="workspace-card mobile-entry" action={saveMobileRound}>
@@ -38,6 +48,7 @@ export function MobileCheckWorkspace({ merchantId, merchantName, validationSet, 
       {parsed && drafts.some((draft) => draft.needsReview) && <p className="form-guidance">有回答没有识别到。检查Q1、Q2、Q3编号后，点击“重新识别回答”。</p>}
       <button className="button primary" type={parsed && !drafts.some((draft) => draft.needsReview) ? "submit" : "button"} onClick={parsed && !drafts.some((draft) => draft.needsReview) ? undefined : () => setParsed(true)}>{parsed && !drafts.some((draft) => draft.needsReview) ? "统一保存并确认本轮" : parsed ? "重新识别回答" : "识别回答并继续"}</button>
     </form>}
-    <section className="workspace-card source-gap-section"><header><div><p className="kicker">SOURCE GAP</p><h2>目标商家与竞品来源差距</h2></div></header><SourceGapTable data={workspace} /></section>
+    <MobileRecommendationPlaybook data={workspace.recommendationPlaybook} />
+    <section className="workspace-card source-gap-section"><header><div><p className="kicker">EVIDENCE & PLATFORM GAP</p><h2>证据与平台查缺</h2></div><Link className="text-link" href={`/platform-audits?merchant=${encodeURIComponent(merchantId)}`}>查看公开平台查缺 →</Link></header>{workspace.sourceGaps.length > 0 ? <><h3>目标商家与竞品来源差距</h3><SourceGapTable data={workspace} /></> : <div className="compact-empty"><p>本轮还没有独立来源对比。可先运行公开平台查缺，找出哪些渠道缺信息或存在冲突。</p></div>}</section>
   </div>;
 }

@@ -43,7 +43,7 @@ export async function saveProfileAndGenerateAction(
 ): Promise<ActionResult<{ id: string }>> {
   try {
     await replaceMerchantProfile(merchantId, facts);
-    return { ok: true, data: await generateQuerySet(merchantId, 12) };
+    return { ok: true, data: await generateQuerySet(merchantId, 15) };
   } catch (error) {
     return actionError(error, "保存或生成问题失败，请稍后重试。");
   }

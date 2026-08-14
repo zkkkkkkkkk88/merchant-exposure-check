@@ -13,6 +13,7 @@ from app.mobile_checks.models import (
     utc_now,
 )
 from app.mobile_checks.schemas import MobileRoundCreate
+from app.mobile_checks.playbook import LEVEL_LABELS, _target_position, build_recommendation_playbook
 from app.queries.models import Query, QuerySet
 
 
@@ -61,14 +62,23 @@ class MobileCheckService:
                 break
         return selected[:3]
 
-    def create_validation_set(self, merchant_id: UUID) -> MobileValidationSet:
+    def create_validation_set(self, merchant_id: UUID, query_ids: list[UUID] | None = None) -> MobileValidationSet:
         queries = self._approved_queries(merchant_id)
         if len(queries) < 3:
             raise NoApprovedQueriesError("latest query set needs three approved enabled recommendation queries")
+        if query_ids is not None:
+            if len(query_ids) != 3 or len(set(query_ids)) != 3:
+                raise NoApprovedQueriesError("mobile validation requires exactly three distinct questions")
+            eligible = {query.id: query for query in queries}
+            if any(query_id not in eligible for query_id in query_ids):
+                raise NoApprovedQueriesError("selected question is not an eligible recommendation")
+            selected = [eligible[query_id] for query_id in query_ids]
+        else:
+            selected = self._sample(queries)
         validation_set = MobileValidationSet(merchant_id=merchant_id)
         validation_set.items = [
             MobileValidationItem(query_id=query.id, position=index)
-            for index, query in enumerate(self._sample(queries), start=1)
+            for index, query in enumerate(selected, start=1)
         ]
         self.session.add(validation_set)
         self.session.commit()
@@ -99,7 +109,15 @@ class MobileCheckService:
             raw_qa_text=payload.raw_qa_text,
             inherited_source_round_id=payload.inherited_source_round_id,
         )
-        record.results = [MobileCheckResult(**item.model_dump()) for item in payload.results]
+        merchant = self.session.get(Merchant, merchant_id)
+        oral_scope = merchant is not None and "口腔" in merchant.industry
+        result_values = []
+        for item in payload.results:
+            values = item.model_dump()
+            if oral_scope:
+                values["competitors"] = [name for name in values["competitors"] if not self._is_public_oral_entity(name)]
+            result_values.append(values)
+        record.results = [MobileCheckResult(**values) for values in result_values]
         record.sources = [MobileRoundSource(**item.model_dump()) for item in payload.sources]
         self.session.add(record)
         self.session.commit()
@@ -141,6 +159,10 @@ class MobileCheckService:
     def _rate(numerator: int, denominator: int) -> float:
         return numerator / denominator if denominator else 0.0
 
+    @staticmethod
+    def _is_public_oral_entity(name: str) -> bool:
+        return any(marker in name for marker in ("人民医院", "中医医院", "妇幼保健院", "卫生院", "公立医院"))
+
     def _latest_confirmed_round(self, merchant_id: UUID) -> MobileCheckRound | None:
         return self.session.scalar(
             select(MobileCheckRound)
@@ -166,6 +188,23 @@ class MobileCheckService:
             .options(selectinload(MobileCheckRound.sources))
         )
         return inherited or latest
+
+    def _previous_confirmed_round(self, latest: MobileCheckRound) -> MobileCheckRound | None:
+        return self.session.scalar(
+            select(MobileCheckRound)
+            .where(
+                MobileCheckRound.merchant_id == latest.merchant_id,
+                MobileCheckRound.status == "confirmed",
+                MobileCheckRound.id != latest.id,
+                MobileCheckRound.created_at <= latest.created_at,
+            )
+            .order_by(MobileCheckRound.created_at.desc(), MobileCheckRound.id.desc())
+            .options(
+                selectinload(MobileCheckRound.results)
+                .selectinload(MobileCheckResult.validation_item)
+                .selectinload(MobileValidationItem.query)
+            )
+        )
 
     @staticmethod
     def _source_rows(merchant_name: str, sources: list[MobileRoundSource], result_competitors: set[str]) -> tuple[list[str], list[dict]]:
@@ -231,7 +270,7 @@ class MobileCheckService:
             raise LookupError("merchant not found")
         latest = self._latest_confirmed_round(merchant_id)
         if latest is None:
-            return {"latestRoundId": None, "sourceRoundId": None, "metrics": None, "entities": [merchant.name], "sourceGaps": []}
+            return {"latestRoundId": None, "sourceRoundId": None, "metrics": None, "entities": [merchant.name], "sourceGaps": [], "latestRoundAnswers": [], "recommendationPlaybook": None}
         confirmed_results = [result for result in latest.results if result.is_confirmed]
         mentioned = [result for result in confirmed_results if result.mention_level != "none"]
         primary = [result for result in confirmed_results if result.mention_level == "primary"]
@@ -242,8 +281,30 @@ class MobileCheckService:
         confirmed_sources = [source for source in source_round.sources if source.is_confirmed]
         all_source_types = {source.source_type for source in confirmed_sources}
         target_source_types = {source.source_type for source in confirmed_sources if source.entity_name == merchant.name}
-        result_competitors = {name for result in confirmed_results for name in result.competitors if name != merchant.name}
-        entities, rows = self._source_rows(merchant.name, source_round.sources, result_competitors)
+        oral_scope = "口腔" in merchant.industry
+        result_competitors = {
+            name for result in confirmed_results for name in result.competitors
+            if name != merchant.name and (not oral_scope or not self._is_public_oral_entity(name))
+        }
+        peer_sources = [
+            source for source in source_round.sources
+            if not oral_scope or source.entity_name == merchant.name or not self._is_public_oral_entity(source.entity_name)
+        ]
+        entities, rows = self._source_rows(merchant.name, peer_sources, result_competitors)
+        playbook = build_recommendation_playbook(
+            merchant,
+            latest,
+            self._previous_confirmed_round(latest),
+            [source for source in confirmed_sources if source in peer_sources],
+        )
+        latest_round_answers = [{
+            "position": result.validation_item.position,
+            "question": result.validation_item.query.text,
+            "answer": result.answer_excerpt,
+            "mentionLevel": result.mention_level,
+            "mentionLabel": LEVEL_LABELS[result.mention_level],
+            "targetPosition": _target_position(result, merchant.name),
+        } for result in sorted(confirmed_results, key=lambda item: item.validation_item.position)]
         return {
             "latestRoundId": str(latest.id),
             "sourceRoundId": str(source_round.id),
@@ -257,4 +318,6 @@ class MobileCheckService:
             },
             "entities": entities,
             "sourceGaps": rows,
+            "latestRoundAnswers": latest_round_answers,
+            "recommendationPlaybook": playbook,
         }

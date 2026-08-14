@@ -17,6 +17,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.queries.models import Query
 
 
 def utc_now() -> datetime:
@@ -81,6 +82,12 @@ class QueryResult(Base):
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     scan_run: Mapped[ScanRun] = relationship(back_populates="results")
+    query: Mapped[Query] = relationship(lazy="joined")
+
+    @property
+    def query_text(self) -> str:
+        return self.query.text
+
     citations: Mapped[list[Citation]] = relationship(
         back_populates="query_result",
         cascade="all, delete-orphan",

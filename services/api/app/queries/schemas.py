@@ -23,7 +23,7 @@ ReviewStatus = Literal["pending", "approved", "rejected"]
 
 
 class QueryGenerateRequest(BaseModel):
-    count: int = Field(default=30, ge=6, le=100)
+    count: int = Field(default=15, ge=6, le=100)
 
 
 class QueryUpdate(BaseModel):

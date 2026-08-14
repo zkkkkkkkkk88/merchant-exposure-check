@@ -76,6 +76,26 @@ def test_generate_review_and_list_query_set(client: TestClient, db_session: Sess
     assert listed.json()[0]["version"] == 1
 
 
+def test_generate_defaults_to_fifteen_candidates(client: TestClient, db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="候选题商家", city="杭州", industry="餐饮"),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="杭州", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="西餐厅", confirmation_status="confirmed"),
+        ]),
+    )
+
+    response = client.post(f"/merchants/{merchant.id}/query-sets/generate", json={})
+
+    assert response.status_code == 201
+    assert len(response.json()["queries"]) == 15
+
+
 def test_generate_rejects_unknown_merchant(client: TestClient) -> None:
     response = client.post(
         f"/merchants/{uuid4()}/query-sets/generate",

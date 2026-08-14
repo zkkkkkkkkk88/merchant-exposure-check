@@ -23,6 +23,10 @@ class MobileValidationSetRead(BaseModel):
     items: list[MobileValidationItemRead] = Field(default_factory=list)
 
 
+class MobileValidationSetCreate(BaseModel):
+    query_ids: list[UUID] = Field(min_length=3, max_length=3)
+
+
 class MobileResultCreate(BaseModel):
     validation_item_id: UUID
     mention_level: Literal["none", "supplementary", "primary"]
@@ -82,3 +86,5 @@ class MobileWorkspaceRead(BaseModel):
     metrics: dict | None
     entities: list[str]
     sourceGaps: list[dict]
+    latestRoundAnswers: list[dict] = Field(default_factory=list)
+    recommendationPlaybook: dict | None = None

@@ -10,6 +10,47 @@ from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
 
 
+def test_oral_care_generation_scopes_recommendations_to_private_peers(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="澜沧皓雅口腔门诊部", city="普洱市", industry="口腔医疗"),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="澜沧县", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="口腔医疗机构", confirmation_status="confirmed"),
+        ]),
+    )
+
+    generated = QueryLibraryService.generate(db_session, merchant.id, count=6)
+    recommendations = [query.text for query in generated.queries if query.intent_type == "recommendation"]
+
+    assert recommendations
+    assert all("民营口腔门诊或诊所" in text for text in recommendations)
+
+
+def test_restaurant_generation_does_not_add_private_medical_scope(db_session: Session) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="O'eat Gastronomy", city="杭州", industry="餐饮"),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(facts=[
+            MerchantProfileFactWrite(field_key="location.city", value="杭州", confirmation_status="confirmed"),
+            MerchantProfileFactWrite(field_key="category.precise", value="西餐厅", confirmation_status="confirmed"),
+        ]),
+    )
+
+    generated = QueryLibraryService.generate(db_session, merchant.id, count=6)
+
+    assert any("西餐厅" in query.text for query in generated.queries)
+    assert all("民营" not in query.text for query in generated.queries)
+
+
 def test_regeneration_uses_the_latest_edited_profile(db_session: Session) -> None:
     merchant = MerchantService.create(
         db_session,

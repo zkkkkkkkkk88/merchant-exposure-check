@@ -80,6 +80,7 @@ def test_create_get_and_import_manual_scan_result(
     fetched = client.get(f"/scan-runs/{scan_id}")
     assert fetched.status_code == 200
     assert fetched.json()["results"][0]["raw_text"] == "推荐测试餐厅。"
+    assert fetched.json()["results"][0]["query_text"] == query.text
 
 
 def test_manual_import_rejects_query_from_another_set(

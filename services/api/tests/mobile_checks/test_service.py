@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.merchants.models import Merchant
 from app.mobile_checks.models import MobileCheckResult, MobileCheckRound, MobileRoundSource
+from app.mobile_checks.schemas import MobileResultCreate, MobileRoundCreate
 from app.mobile_checks.service import MobileCheckService, NoApprovedQueriesError
 from app.queries.models import Query, QuerySet
 
@@ -61,6 +62,34 @@ def test_create_validation_set_uses_only_approved_enabled_queries_and_stays_fixe
         item.query_id for item in created.items
     ]
     assert len({item.query.category for item in created.items}) == 3
+
+
+def test_create_validation_set_accepts_exactly_three_selected_recommendations(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    add_queries(db_session, merchant, 10)
+    eligible = MobileCheckService(db_session)._approved_queries(merchant.id)[:3]
+
+    created = MobileCheckService(db_session).create_validation_set(
+        merchant.id,
+        [query.id for query in eligible],
+    )
+
+    assert [item.query_id for item in created.items] == [query.id for query in eligible]
+
+
+def test_create_validation_set_rejects_invalid_selected_questions(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    add_queries(db_session, merchant, 10)
+    eligible = MobileCheckService(db_session)._approved_queries(merchant.id)
+
+    with pytest.raises(NoApprovedQueriesError, match="exactly three"):
+        MobileCheckService(db_session).create_validation_set(merchant.id, [eligible[0].id])
+
+    with pytest.raises(NoApprovedQueriesError, match="eligible recommendation"):
+        MobileCheckService(db_session).create_validation_set(
+            merchant.id,
+            [eligible[0].id, eligible[1].id, uuid4()],
+        )
 
 
 def test_create_validation_set_rejects_when_latest_set_has_fewer_than_three_recommendations(
@@ -158,6 +187,7 @@ def test_workspace_metrics_use_only_confirmed_question_results(db_session: Sessi
             competitors=["王天佑口腔"] if index == 2 else [],
             information_accurate=index != 1,
             is_confirmed=index < 3,
+            answer_excerpt=f"豆包完整回答 {index + 1}",
         ))
     db_session.commit()
 
@@ -171,6 +201,17 @@ def test_workspace_metrics_use_only_confirmed_question_results(db_session: Sessi
         "informationAccuracyRate": pytest.approx(1 / 2),
         "sourceCoverageRate": 0.0,
     }
+    assert workspace["latestRoundAnswers"] == [
+        {
+            "position": item.position,
+            "question": item.query.text,
+            "answer": f"豆包完整回答 {item.position}",
+            "mentionLevel": levels[item.position - 1],
+            "mentionLabel": "首批推荐" if item.position == 1 else "补充提及" if item.position == 2 else "未提及",
+            "targetPosition": None,
+        }
+        for item in validation_set.items[:3]
+    ]
 
 
 def test_source_gap_matrix_uses_confirmed_mobile_sources_and_marks_target_gap(
@@ -228,6 +269,26 @@ def test_source_gap_stays_empty_until_sources_are_provided(db_session: Session) 
 
     assert workspace["entities"] == [merchant.name]
     assert workspace["sourceGaps"] == []
+
+
+def test_oral_round_excludes_public_hospital_competitors(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    add_queries(db_session, merchant, 6)
+    validation_set = MobileCheckService(db_session).create_validation_set(merchant.id)
+    payload = MobileRoundCreate(
+        validation_set_id=validation_set.id,
+        results=[MobileResultCreate(
+            validation_item_id=validation_set.items[0].id,
+            mention_level="none",
+            competitors=["澜沧县第一人民医院口腔科", "王天佑口腔诊所"],
+            is_confirmed=True,
+        )],
+    )
+
+    created = MobileCheckService(db_session).create_round(merchant.id, payload)
+
+    assert created is not None
+    assert created.results[0].competitors == ["王天佑口腔诊所"]
 
 
 def test_inherited_sources_keep_original_round_provenance(db_session: Session) -> None:

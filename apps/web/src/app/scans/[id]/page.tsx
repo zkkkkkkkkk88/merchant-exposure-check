@@ -31,7 +31,7 @@ export default async function ScanDetailPage({ params }: { params: Promise<{ id:
           {run.results.length ? run.results.map((result) => (
             <EvidenceDrawer
               key={result.id}
-              question={queryMap.get(result.query_id) ?? result.query_id}
+              question={result.query_text ?? queryMap.get(result.query_id) ?? "历史题目（原题文字不可用）"}
               rawText={result.raw_text ?? result.error_message ?? "该题没有返回内容。"}
               uncertainty={result.status === "success" ? "confirmed" : "uncertain"}
               sources={result.citations.map((citation) => citation.url)}

@@ -149,7 +149,18 @@ class RestaurantRulePack:
         )
 
         if len(drafts) < count:
-            wording = ["推荐几家", "有哪些值得选择", "哪几家比较合适", "有哪些可供比较", "有哪些选择"]
+            wording = [
+                "推荐几家",
+                "有哪些值得选择",
+                "哪几家比较合适",
+                "有哪些可供比较",
+                "有哪些选择",
+                "有哪些口碑不错",
+                "哪些值得优先考虑",
+                "第一次去可以选哪些",
+                "有哪些评价较稳定",
+                "本地人常选哪些",
+            ]
             index = 0
             while len(drafts) < count:
                 scope = scopes[index % len(scopes)]

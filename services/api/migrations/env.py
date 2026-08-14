@@ -8,6 +8,7 @@ from app.core.config import get_settings
 from app.db.base import Base
 from app.merchants import models as merchant_models  # noqa: F401
 from app.mobile_checks import models as mobile_check_models  # noqa: F401
+from app.platform_audits import models as platform_audit_models  # noqa: F401
 from app.queries import models as query_models  # noqa: F401
 from app.reports import models as report_models  # noqa: F401
 from app.scans import models as scan_models  # noqa: F401

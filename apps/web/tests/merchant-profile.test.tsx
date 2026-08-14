@@ -54,7 +54,7 @@ it("parses pasted merchant text and requires confirmation before query generatio
   fireEvent.click(screen.getByRole("button", { name: "保存并生成精准问题" }));
 
   await waitFor(() => expect(replaceMerchantProfile).toHaveBeenCalled());
-  expect(generateQuerySet).toHaveBeenCalledWith("m1", 12);
+  expect(generateQuerySet).toHaveBeenCalledWith("m1", 15);
   expect(push).toHaveBeenCalledWith("/queries?merchant=m1");
 });
 

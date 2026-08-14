@@ -28,7 +28,7 @@ class QueryLibraryService:
     def generate(
         session: Session,
         merchant_id: UUID,
-        count: int = 30,
+        count: int = 15,
         generator: TemplateQueryGenerator | None = None,
     ) -> QuerySet:
         merchant = MerchantService.get(session, merchant_id)
@@ -37,6 +37,9 @@ class QueryLibraryService:
 
         if generator is None:
             facts = confirmed_fact_map(MerchantService.get_profile(session, merchant_id).facts)
+            precise_category = facts.get("category.precise")
+            if "口腔" in merchant.industry or (isinstance(precise_category, str) and "口腔" in precise_category):
+                facts["category.precise"] = "民营口腔门诊或诊所"
             context = merchant.local_context
             if context is not None and context.status == "completed":
                 scope = context.county or context.city or context.province

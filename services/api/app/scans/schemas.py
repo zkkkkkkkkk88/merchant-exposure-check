@@ -45,6 +45,7 @@ class QueryResultRead(BaseModel):
 
     id: UUID
     query_id: UUID
+    query_text: str
     status: ResultStatus
     raw_text: str | None
     adapter_name: str

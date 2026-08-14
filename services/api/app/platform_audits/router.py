@@ -1,0 +1,36 @@
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.db.session import get_session
+from app.platform_audits.schemas import PlatformAuditRunRead
+from app.platform_audits.service import PlatformAuditService
+
+
+router = APIRouter(tags=["platform audits"])
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@router.post(
+    "/merchants/{merchant_id}/platform-audits",
+    response_model=PlatformAuditRunRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_platform_audit(merchant_id: UUID, session: SessionDep):
+    try:
+        return PlatformAuditService(session).create_run(merchant_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="merchant not found") from exc
+
+
+@router.get(
+    "/merchants/{merchant_id}/platform-audits/latest",
+    response_model=PlatformAuditRunRead,
+)
+def get_latest_platform_audit(merchant_id: UUID, session: SessionDep):
+    run = PlatformAuditService(session).get_latest(merchant_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="platform audit not found")
+    return run

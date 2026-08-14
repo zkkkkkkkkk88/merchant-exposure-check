@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.main import app
+from app.mobile_checks.service import MobileCheckService
 from tests.mobile_checks.test_service import add_merchant, add_queries
 
 
@@ -61,6 +62,22 @@ def test_round_rejects_validation_set_owned_by_another_merchant(db_session: Sess
     )
 
     assert response.status_code == 404
+    app.dependency_overrides.clear()
+
+
+def test_create_selected_mobile_validation_set(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    add_queries(db_session, merchant, 10)
+    eligible = list(reversed(MobileCheckService(db_session)._approved_queries(merchant.id)[:3]))
+    client = client_for(db_session)
+
+    response = client.post(
+        f"/merchants/{merchant.id}/mobile-validation-sets/select",
+        json={"query_ids": [str(query.id) for query in eligible]},
+    )
+
+    assert response.status_code == 201
+    assert [item["query_id"] for item in response.json()["items"]] == [str(query.id) for query in eligible]
     app.dependency_overrides.clear()
 
 
