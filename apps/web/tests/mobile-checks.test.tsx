@@ -15,6 +15,7 @@ vi.mock("@/lib/api", () => ({
   getMobileWorkspace: vi.fn(),
   getMobileValidationSets: vi.fn(),
   getQuerySets: vi.fn(),
+  getJourneyProgress: vi.fn().mockResolvedValue(null),
 }));
 
 describe("mobile Doubao workspace", () => {
@@ -60,7 +61,7 @@ describe("mobile Doubao workspace", () => {
     vi.mocked(getMobileWorkspace).mockResolvedValue({
       latestRoundId: "round-1",
       sourceRoundId: "round-1",
-      metrics: { confirmedCount: 3, mentionRate: 1 / 3, primaryRate: 0, categoryCoverageRate: 1 / 3, informationAccuracyRate: 1, sourceCoverageRate: 0 },
+      metrics: { confirmedCount: 3, mentionCount: 1, primaryCount: 0, categoryCoveredCount: 1, categoryTotalCount: 3, informationAccurateCount: 1, informationEvaluatedCount: 1, mentionRate: 1 / 3, primaryRate: 0, categoryCoverageRate: 1 / 3, informationAccuracyRate: 1, sourceCoverageRate: 0 },
       entities: ["澜沧皓雅口腔门诊部"],
       sourceGaps: [],
       latestRoundAnswers: [{ position: 1, question: "上一轮问题一", answer: "上一轮豆包完整回答", mentionLevel: "supplementary", mentionLabel: "补充提及", targetPosition: 5 }],
@@ -70,6 +71,10 @@ describe("mobile Doubao workspace", () => {
 
     expect(screen.getByRole("heading", { name: "上一轮已保存成功" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "上一轮有效结果" })).toBeInTheDocument();
+    expect(screen.getAllByText("1/3", { selector: "small" })).toHaveLength(2);
+    expect(screen.getByText("0/3", { selector: "small" })).toBeInTheDocument();
+    expect(screen.getByText("本轮至少首批推荐一次")).toBeInTheDocument();
+    expect(screen.getByText("否", { selector: "strong" })).toBeInTheDocument();
     expect(screen.getByLabelText("本轮手机实测步骤")).toBeInTheDocument();
     expect(screen.queryByLabelText("集中粘贴3份回答")).not.toBeInTheDocument();
     expect(screen.getByText("上一轮豆包完整回答")).not.toBeVisible();
@@ -88,7 +93,7 @@ describe("mobile Doubao workspace", () => {
     vi.mocked(getMobileWorkspace).mockResolvedValue({
       latestRoundId: "round-1",
       sourceRoundId: "round-1",
-      metrics: { confirmedCount: 8, mentionRate: 0.25, primaryRate: 0.125, categoryCoverageRate: 0.5, informationAccuracyRate: 1, sourceCoverageRate: 0.25 },
+      metrics: { confirmedCount: 8, mentionCount: 2, primaryCount: 1, categoryCoveredCount: 2, categoryTotalCount: 4, informationAccurateCount: 2, informationEvaluatedCount: 2, mentionRate: 0.25, primaryRate: 0.125, categoryCoverageRate: 0.5, informationAccuracyRate: 1, sourceCoverageRate: 0.25 },
       entities: ["澜沧舒适口腔", "王天佑口腔"],
       sourceGaps: [{ key: "recruitment", label: "招聘页面", highlight: true, cells: { "澜沧舒适口腔": { status: "missing", evidence: [] }, "王天佑口腔": { status: "present", evidence: ["招聘页：CT、独立诊室"] } } }],
     });

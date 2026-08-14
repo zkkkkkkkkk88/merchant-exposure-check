@@ -6,7 +6,7 @@ const levelLabel = { none: "未提及", supplementary: "补充提及", primary: 
 
 export function MobileRecommendationPlaybook({ data }: { data: MobileWorkspaceData["recommendationPlaybook"] }) {
   if (!data) return null;
-  return <section className="workspace-card recommendation-playbook">
+  return <section className="workspace-card recommendation-playbook" id="improvement-playbook">
     <header><div><p className="kicker">IMPROVEMENT PLAYBOOK</p><h2>推荐率提升方案</h2></div><span>{data.actions.length} 项优先行动</span></header>
 
     <div className="playbook-diagnosis">
@@ -39,7 +39,7 @@ export function MobileRecommendationPlaybook({ data }: { data: MobileWorkspaceDa
       </article>)}</div>
     </div>
 
-    <div className="playbook-block retest-comparison">
+    <div className="playbook-block retest-comparison" id="retest-comparison">
       <h3>完成后如何判断有没有提升</h3>
       {data.comparison ? <><div className="comparison-metrics"><span>提及率 <strong>{percent(data.comparison.mentionRateBefore)} → {percent(data.comparison.mentionRateAfter)}</strong></span><span>首批推荐率 <strong>{percent(data.comparison.primaryRateBefore)} → {percent(data.comparison.primaryRateAfter)}</strong></span></div><ul>{data.comparison.questions.map((question) => <li key={question.text}><span>{question.text}</span><strong>{levelLabel[question.before]} → {levelLabel[question.after]}</strong></li>)}</ul></> : <p>目前没有可直接比较的同题上一轮。完成行动后，仍用这 3 道题、3 个独立对话复测，系统会自动显示前后变化。</p>}
     </div>

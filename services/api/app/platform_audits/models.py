@@ -40,6 +40,8 @@ class PlatformAuditResult(Base):
     platform_name: Mapped[str] = mapped_column(String(100))
     status: Mapped[str] = mapped_column(String(20))
     found: Mapped[bool] = mapped_column(default=False)
+    search_query: Mapped[str | None] = mapped_column(Text, nullable=True)
+    baseline_fields: Mapped[dict] = mapped_column(JSON, default=dict)
     fields: Mapped[dict] = mapped_column(JSON, default=dict)
     issues: Mapped[list[str]] = mapped_column(JSON, default=list)
     evidence: Mapped[list[dict]] = mapped_column(JSON, default=list)

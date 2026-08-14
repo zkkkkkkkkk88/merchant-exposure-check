@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), back: vi.fn() }),
 }));
 
-vi.mock("@/lib/api", () => ({ getDashboard: vi.fn() }));
+vi.mock("@/lib/api", () => ({ getDashboard: vi.fn(), getJourneyProgress: vi.fn().mockResolvedValue(null) }));
 
 const dashboard = {
   merchant: { id: "oral-1", name: "澜沧皓雅口腔门诊部" },

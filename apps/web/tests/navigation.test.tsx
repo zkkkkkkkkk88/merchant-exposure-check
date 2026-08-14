@@ -20,13 +20,29 @@ beforeEach(() => {
   navigation.pathname = "/merchants/m1";
   navigation.back.mockReset();
   navigation.push.mockReset();
-  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-    status: "ok",
-    api: "ok",
-    database: "ok",
-    worker: "ok",
-    integrations: { doubao: true, amap: true, tencent_map: false },
-  }), { status: 200 })));
+  vi.stubGlobal("fetch", vi.fn().mockImplementation((input: string | URL | Request) => {
+    const url = String(input);
+    const payload = url.includes("journey-progress")
+      ? {
+          merchant_id: "m1",
+          completed_count: 2,
+          total_count: 6,
+          current_step: "audit",
+          steps: [
+            { key: "profile", label: "商家画像", status: "completed", href: "/merchants/m1" },
+            { key: "queries", label: "问题策略", status: "completed", href: "/queries?merchant=m1" },
+            { key: "audit", label: "平台查缺", status: "ready", href: "/platform-audits?merchant=m1" },
+          ],
+        }
+      : {
+          status: "ok",
+          api: "ok",
+          database: "ok",
+          worker: "ok",
+          integrations: { doubao: true, amap: true, tencent_map: false },
+        };
+    return Promise.resolve(new Response(JSON.stringify(payload), { status: 200 }));
+  }));
 });
 
 afterEach(() => vi.unstubAllGlobals());
@@ -76,4 +92,23 @@ it("shows whether the API, worker and required integrations are ready", async ()
   expect(screen.getByText("豆包已配置")).toBeVisible();
   expect(screen.getByText("高德已配置")).toBeVisible();
   expect(screen.getByText("腾讯地图未配置")).toBeVisible();
+});
+
+it("shows merchant journey progress and exposes the full navigation on mobile", async () => {
+  navigation.pathname = "/mobile-checks";
+  navigation.merchant = "m1";
+  render(<AppShell><p>内容</p></AppShell>);
+
+  await waitFor(() => expect(screen.getByText("商家进度 2/6")).toBeVisible());
+  expect(screen.getByText("下一步：平台查缺")).toBeVisible();
+
+  const menuButton = screen.getByRole("button", { name: "打开导航" });
+  expect(menuButton).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(menuButton);
+  expect(menuButton).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("navigation", { name: "手机版主导航" })).toBeVisible();
+  expect(screen.getAllByRole("link", { name: /交付报告/ }).at(-1)).toHaveAttribute(
+    "href",
+    "/delivery-report?merchant=m1",
+  );
 });

@@ -4,6 +4,10 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class PlatformAuditAdoptRequest(BaseModel):
+    field_key: str = Field(min_length=2, max_length=50)
+
+
 class PlatformAuditResultRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: UUID
@@ -11,6 +15,8 @@ class PlatformAuditResultRead(BaseModel):
     platform_name: str
     status: str
     found: bool
+    search_query: str | None = None
+    baseline_fields: dict = Field(default_factory=dict)
     fields: dict = Field(default_factory=dict)
     issues: list[str] = Field(default_factory=list)
     evidence: list[dict] = Field(default_factory=list)

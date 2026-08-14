@@ -1,5 +1,6 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
@@ -55,3 +56,18 @@ class DashboardRead(BaseModel):
     categories: list[dict[str, str | Decimal | int]]
     competitors: list[dict[str, object]]
     actions: list[dict[str, object]]
+
+
+class JourneyStepRead(BaseModel):
+    key: Literal["profile", "queries", "audit", "mobile", "action", "retest"]
+    label: str
+    status: Literal["completed", "ready", "pending"]
+    href: str
+
+
+class JourneyProgressRead(BaseModel):
+    merchant_id: UUID
+    completed_count: int
+    total_count: int = 6
+    current_step: str
+    steps: list[JourneyStepRead]

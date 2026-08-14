@@ -6,10 +6,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
-from app.merchants.models import Merchant
+from app.merchants.models import Merchant, MerchantProfileFact
+from app.mobile_checks.models import MobileCheckRound, MobileValidationItem
+from app.platform_audits.models import PlatformAuditRun
+from app.queries.models import Query, QuerySet
 from app.reports.schemas import (
     DashboardRead,
     HistoryRead,
+    JourneyProgressRead,
     ManualCheckCreate,
     ManualCheckRead,
     ReportRead,
@@ -17,7 +21,6 @@ from app.reports.schemas import (
 from app.reports.service import ReportService
 from app.scans.models import ScanRun
 from app.scans.models import Citation, QueryResult
-from app.queries.models import Query
 
 router = APIRouter(tags=["reports"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -128,6 +131,137 @@ def _action_plan(category: str, merchant: Merchant) -> dict[str, object]:
     plan["example"] = f"【商家名】位于【{region or '县级地域'}】的【{address or '标准地址'}】，附近可核验地标与到店方式以公开来源为准。"
     plan["completionCriteria"] = f"至少两个公开页面使用一致的商家名、{region or '县级地域'}和标准地址，不填写未经来源确认的设施或片区。"
     return plan
+
+
+@router.get(
+    "/merchants/{merchant_id}/journey-progress",
+    response_model=JourneyProgressRead,
+)
+def get_journey_progress(
+    merchant_id: UUID,
+    session: SessionDep,
+) -> JourneyProgressRead:
+    if session.get(Merchant, merchant_id) is None:
+        raise HTTPException(status_code=404, detail="Merchant not found")
+
+    confirmed_profile_count = session.scalar(
+        select(func.count(MerchantProfileFact.id)).where(
+            MerchantProfileFact.merchant_id == merchant_id,
+            MerchantProfileFact.confirmation_status == "confirmed",
+        )
+    ) or 0
+    latest_query_set = session.scalar(
+        select(QuerySet)
+        .where(
+            QuerySet.merchant_id == merchant_id,
+            QuerySet.is_archived.is_(False),
+        )
+        .order_by(QuerySet.version.desc(), QuerySet.created_at.desc())
+        .limit(1)
+    )
+    approved_query_count = 0
+    if latest_query_set is not None:
+        approved_query_count = sum(
+            1
+            for query in latest_query_set.queries
+            if query.review_status == "approved"
+            and query.is_enabled
+            and query.intent_type == "recommendation"
+        )
+
+    latest_audit_status = session.scalar(
+        select(PlatformAuditRun.status)
+        .where(PlatformAuditRun.merchant_id == merchant_id)
+        .order_by(PlatformAuditRun.created_at.desc(), PlatformAuditRun.id.desc())
+        .limit(1)
+    )
+    confirmed_rounds = list(
+        session.scalars(
+            select(MobileCheckRound)
+            .where(
+                MobileCheckRound.merchant_id == merchant_id,
+                MobileCheckRound.status == "confirmed",
+            )
+            .order_by(MobileCheckRound.created_at, MobileCheckRound.id)
+        )
+    )
+
+    signatures: dict[tuple[str, ...], int] = {}
+    for round_record in confirmed_rounds:
+        query_ids = tuple(
+            sorted(
+                str(query_id)
+                for query_id in session.scalars(
+                    select(MobileValidationItem.query_id).where(
+                        MobileValidationItem.validation_set_id
+                        == round_record.validation_set_id
+                    )
+                )
+            )
+        )
+        if query_ids:
+            signatures[query_ids] = signatures.get(query_ids, 0) + 1
+
+    profile_done = confirmed_profile_count > 0
+    queries_done = approved_query_count >= 3
+    audit_done = latest_audit_status in {"completed", "partial"}
+    mobile_done = bool(confirmed_rounds)
+    retest_done = any(count >= 2 for count in signatures.values())
+
+    def dependent_status(done: bool, ready: bool) -> str:
+        if done:
+            return "completed"
+        return "ready" if ready else "pending"
+
+    merchant_query = f"?merchant={merchant_id}"
+    steps = [
+        {
+            "key": "profile",
+            "label": "商家画像",
+            "status": "completed" if profile_done else "pending",
+            "href": f"/merchants/{merchant_id}",
+        },
+        {
+            "key": "queries",
+            "label": "问题策略",
+            "status": "completed" if queries_done else "pending",
+            "href": f"/queries{merchant_query}",
+        },
+        {
+            "key": "audit",
+            "label": "平台查缺",
+            "status": dependent_status(audit_done, queries_done),
+            "href": f"/platform-audits{merchant_query}",
+        },
+        {
+            "key": "mobile",
+            "label": "手机实测",
+            "status": dependent_status(mobile_done, queries_done),
+            "href": f"/mobile-checks{merchant_query}",
+        },
+        {
+            "key": "action",
+            "label": "执行优化",
+            "status": "ready" if mobile_done else "pending",
+            "href": f"/mobile-checks{merchant_query}#improvement-playbook",
+        },
+        {
+            "key": "retest",
+            "label": "同题复测",
+            "status": dependent_status(retest_done, mobile_done),
+            "href": f"/mobile-checks{merchant_query}#retest-comparison",
+        },
+    ]
+    current_step = next(
+        (step["key"] for step in steps if step["status"] != "completed"),
+        "report",
+    )
+    return JourneyProgressRead(
+        merchant_id=merchant_id,
+        completed_count=sum(step["status"] == "completed" for step in steps),
+        current_step=current_step,
+        steps=steps,
+    )
 
 
 @router.get("/merchants/{merchant_id}/dashboard", response_model=DashboardRead)

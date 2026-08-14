@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/api", () => ({
   getDashboard: vi.fn(),
   getMerchants: vi.fn(),
+  getJourneyProgress: vi.fn().mockResolvedValue(null),
 }));
 
 const mockedGetDashboard = vi.mocked(getDashboard);

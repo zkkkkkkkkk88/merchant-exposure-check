@@ -11,7 +11,7 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
-vi.mock("@/lib/api", () => ({ getLatestPlatformAudit: vi.fn(), getMerchants: vi.fn() }));
+vi.mock("@/lib/api", () => ({ getLatestPlatformAudit: vi.fn(), getMerchants: vi.fn(), getJourneyProgress: vi.fn().mockResolvedValue(null) }));
 
 beforeEach(() => {
   vi.mocked(getMerchants).mockResolvedValue([{ id: "merchant-1", name: "测试商家", branch_name: null }]);
@@ -33,13 +33,18 @@ it("shows an honest platform status matrix", async () => {
 it("shows a found platform as 已检索到 with the discovered phone", async () => {
   vi.mocked(getLatestPlatformAudit).mockResolvedValue({
     id: "audit-2", merchant_id: "merchant-1", status: "completed", created_at: "2026-08-13T00:00:00Z", started_at: null, finished_at: null, error_message: null,
-    platforms: [{ id: "result-2", platform_key: "amap", platform_name: "高德地图", status: "complete", found: true, fields: { phone: "0879-7594999" }, issues: ["发现可补录电话：0879-7594999"], evidence: [], checked_at: "2026-08-13T00:00:00Z" }],
+    platforms: [{ id: "result-2", platform_key: "amap", platform_name: "高德地图", status: "complete", found: true, search_query: "澜沧皓雅口腔门诊部 高德地图", baseline_fields: { name: "澜沧皓雅口腔门诊部" }, fields: { name: "澜沧皓雅口腔门诊部", phone: "0879-7594999" }, issues: ["发现可补录电话：0879-7594999"], evidence: [{ url: "https://www.amap.com/place/example", title: "高德地图：澜沧皓雅口腔门诊部" }], checked_at: "2026-08-13T00:00:00Z" }],
   });
 
   render(await PlatformAuditsPage({ searchParams: Promise.resolve({ merchant: "merchant-1" }) }));
 
   expect(screen.getAllByText("已检索到").length).toBeGreaterThan(0);
   expect(screen.getByText("发现可补录电话：0879-7594999")).toBeInTheDocument();
+  expect(screen.getByText("澜沧皓雅口腔门诊部 高德地图")).toBeInTheDocument();
+  expect(screen.getByText("命中名称：澜沧皓雅口腔门诊部")).toBeInTheDocument();
+  expect(screen.getByText("当前未录入")).toBeInTheDocument();
+  expect(screen.getByText("0879-7594999")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "采用电话" })).toBeEnabled();
 });
 
 it("keeps found visible when public information conflicts", async () => {
@@ -52,6 +57,7 @@ it("keeps found visible when public information conflicts", async () => {
 
   expect(screen.getByText("已检索到 · 信息冲突")).toBeInTheDocument();
   expect(screen.getByText(/发现可补录电话：0879-7594999/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "采用电话" })).not.toBeInTheDocument();
 });
 
 it("distinguishes a queued audit from a running audit", async () => {
