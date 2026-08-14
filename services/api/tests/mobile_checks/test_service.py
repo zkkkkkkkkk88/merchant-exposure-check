@@ -195,6 +195,12 @@ def test_workspace_metrics_use_only_confirmed_question_results(db_session: Sessi
 
     assert workspace["metrics"] == {
         "confirmedCount": 3,
+        "mentionCount": 2,
+        "primaryCount": 1,
+        "categoryCoveredCount": 2,
+        "categoryTotalCount": 3,
+        "informationAccurateCount": 1,
+        "informationEvaluatedCount": 2,
         "mentionRate": pytest.approx(2 / 3),
         "primaryRate": pytest.approx(1 / 3),
         "categoryCoverageRate": pytest.approx(2 / 3),

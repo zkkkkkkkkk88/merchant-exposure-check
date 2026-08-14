@@ -216,7 +216,7 @@ export interface MobileValidationSetData {
 export interface MobileWorkspaceData {
   latestRoundId: string | null;
   sourceRoundId: string | null;
-  metrics: null | { confirmedCount: number; mentionRate: number; primaryRate: number; categoryCoverageRate: number; informationAccuracyRate: number; sourceCoverageRate: number };
+  metrics: null | { confirmedCount: number; mentionCount: number; primaryCount: number; categoryCoveredCount: number; categoryTotalCount: number; informationAccurateCount: number; informationEvaluatedCount: number; mentionRate: number; primaryRate: number; categoryCoverageRate: number; informationAccuracyRate: number; sourceCoverageRate: number };
   entities: string[];
   sourceGaps: Array<{ key: string; label: string; highlight: boolean; cells: Record<string, { status: "present" | "missing" | "needs_review"; evidence: string[] }> }>;
   latestRoundAnswers?: Array<{ position: number; question: string; answer: string | null; mentionLevel: "none" | "supplementary" | "primary"; mentionLabel: string; targetPosition: number | null }>;
@@ -250,6 +250,8 @@ export interface PlatformAuditResultData {
   platform_name: string;
   status: PlatformAuditStatus;
   found: boolean;
+  search_query?: string | null;
+  baseline_fields?: Record<string, unknown>;
   fields: Record<string, unknown>;
   issues: string[];
   evidence: Array<{ url?: string; title?: string | null; snippet?: string | null }>;
@@ -265,4 +267,17 @@ export interface PlatformAuditRunData {
   finished_at: string | null;
   error_message: string | null;
   platforms: PlatformAuditResultData[];
+}
+
+export interface JourneyProgressData {
+  merchant_id: string;
+  completed_count: number;
+  total_count: number;
+  current_step: string;
+  steps: Array<{
+    key: "profile" | "queries" | "audit" | "mobile" | "action" | "retest";
+    label: string;
+    status: "completed" | "ready" | "pending";
+    href: string;
+  }>;
 }

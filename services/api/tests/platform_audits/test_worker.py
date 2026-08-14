@@ -45,3 +45,6 @@ async def test_worker_audits_each_public_platform_and_finishes(db_session: Sessi
     assert completed is not None and completed.status == "completed"
     assert len(completed.platforms) == len(PLATFORM_CATALOG)
     assert completed.platforms[0].evidence[0]["url"] == "https://example.com/public"
+    assert completed.platforms[0].search_query is not None
+    assert "澜沧皓雅口腔门诊部" in completed.platforms[0].search_query
+    assert "高德地图" in completed.platforms[0].search_query

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 
 import { BackLink } from "./back-link";
 import { ServiceStatus } from "./service-status";
+import { JourneyProgress } from "./journey-progress";
 
 const navigation = [
   ["总览", "/"],
@@ -15,6 +16,7 @@ const navigation = [
   ["手机实测", "/mobile-checks"],
   ["检测", "/scans"],
   ["历史", "/history"],
+  ["交付报告", "/delivery-report"],
 ] as const;
 
 function fallbackFor(pathname: string): string {
@@ -32,6 +34,7 @@ function isCurrent(pathname: string, href: string): boolean {
 }
 
 function ShellContent({ children }: { children: ReactNode }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
   const profileMerchant = pathname.match(/^\/merchants\/([^/]+)$/)?.[1];
@@ -68,10 +71,45 @@ function ShellContent({ children }: { children: ReactNode }) {
       </aside>
       <header className="mobile-header">
         <Link className="brand-mark" href={withMerchant("/")}><span>见</span><strong>见序</strong></Link>
-        <div className="mobile-header-actions"><ServiceStatus compact /><Link href={withMerchant("/merchants")}>商家画像</Link></div>
+        <div className="mobile-header-actions">
+          <ServiceStatus compact />
+          <button
+            aria-controls="mobile-navigation"
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "关闭导航" : "打开导航"}
+            className="mobile-menu-button"
+            onClick={() => setMenuOpen((value) => !value)}
+            type="button"
+          >
+            <span aria-hidden="true">{menuOpen ? "×" : "☰"}</span>
+          </button>
+        </div>
       </header>
+      <nav
+        aria-label="手机版主导航"
+        className="mobile-navigation"
+        hidden={!menuOpen}
+        id="mobile-navigation"
+      >
+        {navigation.map(([label, href], index) => {
+          const current = isCurrent(pathname, href);
+          return (
+            <Link
+              aria-current={current ? "page" : undefined}
+              className={current ? "active" : ""}
+              href={withMerchant(href)}
+              key={href}
+              onClick={() => setMenuOpen(false)}
+            >
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
       <main className="app-content">
         {pathname !== "/" && <div className="global-back"><BackLink fallbackHref={fallbackFor(pathname)} /></div>}
+        {merchantId && <JourneyProgress merchantId={merchantId} />}
         {children}
       </main>
     </div>

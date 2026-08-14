@@ -12,6 +12,9 @@ from app.merchants.schemas import (
     MerchantProfileWrite,
 )
 from app.merchants.service import MerchantService
+from app.mobile_checks.models import MobileCheckRound
+from app.mobile_checks.service import MobileCheckService
+from app.platform_audits.models import PlatformAuditRun
 from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
 from app.scans.schemas import (
@@ -93,6 +96,116 @@ def create_manual_scan(
         ),
     )
     return merchant, query, run
+
+
+def test_journey_progress_starts_with_profile_and_never_claims_external_action_done(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="Progress Store", city="Hangzhou", industry="Dining"),
+    )
+
+    response = client.get(f"/merchants/{merchant.id}/journey-progress")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["completed_count"] == 0
+    assert payload["total_count"] == 6
+    assert payload["current_step"] == "profile"
+    assert [item["status"] for item in payload["steps"]] == [
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+    ]
+
+
+def test_journey_progress_marks_internal_evidence_and_keeps_action_as_ready(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    merchant = MerchantService.create(
+        db_session,
+        MerchantCreate(name="Progress Clinic", city="Lancang", industry="Dental"),
+    )
+    MerchantService.replace_profile(
+        db_session,
+        merchant.id,
+        MerchantProfileWrite(
+            facts=[
+                MerchantProfileFactWrite(
+                    field_key="identity.official_name",
+                    value="Progress Clinic",
+                    confirmation_status="confirmed",
+                ),
+                MerchantProfileFactWrite(
+                    field_key="location.city",
+                    value="Lancang",
+                    confirmation_status="confirmed",
+                ),
+                MerchantProfileFactWrite(
+                    field_key="category.precise",
+                    value="Private dental clinic",
+                    confirmation_status="confirmed",
+                ),
+            ]
+        ),
+    )
+    query_set = QueryLibraryService.generate(db_session, merchant.id, count=6)
+    recommendation_queries = [
+        query for query in query_set.queries if query.intent_type == "recommendation"
+    ][:3]
+    for query in recommendation_queries:
+        QueryLibraryService.update_query(
+            db_session,
+            query.id,
+            QueryUpdate(review_status="approved", is_enabled=True),
+        )
+    validation_set = MobileCheckService(db_session).create_validation_set(merchant.id)
+    db_session.add_all(
+        [
+            PlatformAuditRun(merchant_id=merchant.id, status="completed"),
+            MobileCheckRound(
+                merchant_id=merchant.id,
+                validation_set_id=validation_set.id,
+                status="confirmed",
+            ),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(f"/merchants/{merchant.id}/journey-progress")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["completed_count"] == 4
+    assert [item["status"] for item in payload["steps"]] == [
+        "completed",
+        "completed",
+        "completed",
+        "completed",
+        "ready",
+        "ready",
+    ]
+    assert payload["current_step"] == "action"
+
+    db_session.add(
+        MobileCheckRound(
+            merchant_id=merchant.id,
+            validation_set_id=validation_set.id,
+            status="confirmed",
+        )
+    )
+    db_session.commit()
+
+    retested = client.get(f"/merchants/{merchant.id}/journey-progress").json()
+    assert retested["completed_count"] == 5
+    assert retested["steps"][-1]["status"] == "completed"
+    assert retested["steps"][-2]["status"] == "ready"
 
 
 def test_report_calculates_target_mention_and_accepts_manual_check(

@@ -77,6 +77,7 @@ async def process_next_platform_audit(
 
     failure_count = 0
     for platform_key, platform_name in PLATFORM_CATALOG:
+        query = None
         try:
             with session_factory() as session:
                 merchant = session.get(Merchant, merchant_id)
@@ -120,12 +121,13 @@ async def process_next_platform_audit(
                     found=found,
                     fields=fields,
                     evidence=evidence,
+                    search_query=query,
                 )
         except Exception as exc:  # one platform must not abort the other checks
             failure_count += 1
             with session_factory() as session:
                 PlatformAuditService(session).record_failure(
-                    run_id, platform_key, platform_name, str(exc)
+                    run_id, platform_key, platform_name, str(exc), search_query=query
                 )
 
     with session_factory() as session:

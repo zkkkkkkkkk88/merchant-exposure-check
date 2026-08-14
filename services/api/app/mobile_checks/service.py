@@ -310,6 +310,12 @@ class MobileCheckService:
             "sourceRoundId": str(source_round.id),
             "metrics": {
                 "confirmedCount": len(confirmed_results),
+                "mentionCount": len(mentioned),
+                "primaryCount": len(primary),
+                "categoryCoveredCount": len(mentioned_categories),
+                "categoryTotalCount": len(tested_categories),
+                "informationAccurateCount": len(accurate),
+                "informationEvaluatedCount": len(mentioned),
                 "mentionRate": self._rate(len(mentioned), len(confirmed_results)),
                 "primaryRate": self._rate(len(primary), len(confirmed_results)),
                 "categoryCoverageRate": self._rate(len(mentioned_categories), len(tested_categories)),

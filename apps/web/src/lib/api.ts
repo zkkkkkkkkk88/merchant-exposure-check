@@ -12,6 +12,7 @@ import type {
   MobileValidationSetData,
   MobileWorkspaceData,
   PlatformAuditRunData,
+  JourneyProgressData,
 } from "./contracts";
 import type { MerchantPayload } from "@/components/merchant-form";
 
@@ -206,6 +207,13 @@ export function getLatestPlatformAudit(merchantId: string): Promise<PlatformAudi
   return readJson<PlatformAuditRunData>(
     `/merchants/${encodeURIComponent(merchantId)}/platform-audits/latest`,
     "暂时无法读取平台查缺结果。",
+  );
+}
+
+export function getJourneyProgress(merchantId: string): Promise<JourneyProgressData | null> {
+  return readJson<JourneyProgressData>(
+    `/merchants/${encodeURIComponent(merchantId)}/journey-progress`,
+    "暂时无法读取商家进度。",
   );
 }
 
