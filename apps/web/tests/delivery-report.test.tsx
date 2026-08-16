@@ -36,6 +36,7 @@ describe("delivery report", () => {
     });
     vi.mocked(getMerchantProfile).mockResolvedValue({ merchant_id: "m1", facts: [
       { field_key: "contact.phone", value: "0879-1234567", confirmation_status: "confirmed", source_urls: ["https://example.com"] },
+      { field_key: "location.city", value: "云南", confirmation_status: "confirmed", source_urls: [] },
     ] });
     vi.mocked(getQuerySets).mockResolvedValue([]);
     vi.mocked(getJourneyProgress).mockResolvedValue({ merchant_id: "m1", completed_count: 4, total_count: 6, current_step: "action", steps: [] });
@@ -76,6 +77,12 @@ describe("delivery report", () => {
     expect(screen.getByRole("heading", { name: "补齐可核验服务事实" })).toBeVisible();
     expect(screen.getByText("0% → 67%")).toBeVisible();
     expect(screen.getByText("答案来自实测，不代表豆包官方排序规则。")).toBeVisible();
+    expect(screen.getByText("联系电话")).toBeVisible();
+    expect(screen.getByText("省份 / 城市")).toBeVisible();
+    expect(screen.queryByText("contact.phone")).not.toBeInTheDocument();
+    expect(screen.queryByText("location.city")).not.toBeInTheDocument();
+    expect(screen.getByText("核心验收已通过")).toBeVisible();
+    expect(screen.getByRole("button", { name: "打印 / 另存为 PDF" })).toBeEnabled();
   });
 
   it("prints through the browser so the user can save PDF", () => {
@@ -83,6 +90,17 @@ describe("delivery report", () => {
     render(<PrintReportButton />);
     fireEvent.click(screen.getByRole("button", { name: "打印 / 另存为 PDF" }));
     expect(print).toHaveBeenCalledOnce();
+    print.mockRestore();
+  });
+
+  it("does not print an incomplete report", () => {
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    render(<PrintReportButton disabled disabledReason="手机实测需要确认完整的3道回答" />);
+    const button = screen.getByRole("button", { name: "打印 / 另存为 PDF" });
+    expect(button).toBeDisabled();
+    expect(screen.getByText("手机实测需要确认完整的3道回答")).toBeVisible();
+    fireEvent.click(button);
+    expect(print).not.toHaveBeenCalled();
     print.mockRestore();
   });
 });

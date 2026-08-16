@@ -65,6 +65,14 @@ class QueryLibraryService:
         latest_version = session.scalar(
             select(func.max(QuerySet.version)).where(QuerySet.merchant_id == merchant_id)
         )
+        active_sets = session.scalars(
+            select(QuerySet).where(
+                QuerySet.merchant_id == merchant_id,
+                QuerySet.is_archived.is_(False),
+            )
+        )
+        for active_set in active_sets:
+            active_set.is_archived = True
         query_set = QuerySet(
             merchant_id=merchant_id,
             version=(latest_version or 0) + 1,

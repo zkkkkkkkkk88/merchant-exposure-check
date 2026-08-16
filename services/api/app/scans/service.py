@@ -27,6 +27,10 @@ class InvalidManualResultError(ValueError):
     pass
 
 
+class InvalidScanStateError(ValueError):
+    pass
+
+
 def utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -77,6 +81,20 @@ class ScanService:
                 .where(ScanRun.merchant_id == merchant_id)
                 .order_by(ScanRun.created_at.desc())
             )
+        )
+
+    @staticmethod
+    def retry_run(session: Session, scan_run_id: UUID) -> ScanRun:
+        original = ScanService.get(session, scan_run_id)
+        if original is None:
+            raise ScanNotFoundError(str(scan_run_id))
+        if original.status not in {"failed", "partial"}:
+            raise InvalidScanStateError("Only failed or partial scans can be retried")
+        return ScanService.create_run(
+            session,
+            original.merchant_id,
+            original.query_set_id,
+            original.adapter_name,
         )
 
     @staticmethod

@@ -62,6 +62,8 @@ describe("query library workspace", () => {
 
     expect(screen.getAllByText("推荐检测").length).toBeGreaterThan(0);
     expect(screen.getByText("信息验证")).toBeVisible();
+    expect(screen.getByText("信息验证").closest("td")).toHaveAttribute("data-label", "检测类型");
+    expect(screen.getByText("场景匹配").closest("td")).toHaveAttribute("data-label", "生成理由");
   });
 
   it("uses category URLs with counts and renders only the selected category", () => {

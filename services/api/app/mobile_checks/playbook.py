@@ -74,14 +74,33 @@ def _rates(round_record: MobileCheckRound) -> tuple[float, float]:
     )
 
 
-def _comparison(latest: MobileCheckRound, previous: MobileCheckRound | None) -> dict | None:
+def rounds_are_comparable(
+    latest: MobileCheckRound,
+    previous: MobileCheckRound | None,
+) -> bool:
     if previous is None:
+        return False
+    if latest.validation_set_id == previous.validation_set_id:
+        return True
+    current_texts = {
+        re.sub(r"\s+", "", item.validation_item.query.text)
+        for item in _confirmed_results(latest)
+    }
+    previous_texts = {
+        re.sub(r"\s+", "", item.validation_item.query.text)
+        for item in _confirmed_results(previous)
+    }
+    return bool(current_texts and current_texts == previous_texts)
+
+
+def _comparison(latest: MobileCheckRound, previous: MobileCheckRound | None) -> dict | None:
+    if previous is None or not rounds_are_comparable(latest, previous):
         return None
     current_results = _confirmed_results(latest)
     previous_results = _confirmed_results(previous)
     current_by_text = {re.sub(r"\s+", "", item.validation_item.query.text): item for item in current_results}
     previous_by_text = {re.sub(r"\s+", "", item.validation_item.query.text): item for item in previous_results}
-    if not current_by_text or set(current_by_text) != set(previous_by_text):
+    if not current_by_text:
         return None
     before_mention, before_primary = _rates(previous)
     after_mention, after_primary = _rates(latest)

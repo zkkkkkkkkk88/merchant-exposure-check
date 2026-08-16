@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.merchants.models import Merchant, MerchantProfileFact
-from app.mobile_checks.models import MobileCheckRound, MobileValidationItem
+from app.mobile_checks.models import MobileCheckRound
+from app.mobile_checks.playbook import rounds_are_comparable
 from app.platform_audits.models import PlatformAuditRun
 from app.queries.models import Query, QuerySet
 from app.reports.schemas import (
@@ -186,27 +187,13 @@ def get_journey_progress(
         )
     )
 
-    signatures: dict[tuple[str, ...], int] = {}
-    for round_record in confirmed_rounds:
-        query_ids = tuple(
-            sorted(
-                str(query_id)
-                for query_id in session.scalars(
-                    select(MobileValidationItem.query_id).where(
-                        MobileValidationItem.validation_set_id
-                        == round_record.validation_set_id
-                    )
-                )
-            )
-        )
-        if query_ids:
-            signatures[query_ids] = signatures.get(query_ids, 0) + 1
-
     profile_done = confirmed_profile_count > 0
-    queries_done = approved_query_count >= 3
-    audit_done = latest_audit_status in {"completed", "partial"}
     mobile_done = bool(confirmed_rounds)
-    retest_done = any(count >= 2 for count in signatures.values())
+    queries_done = approved_query_count >= 3 or mobile_done
+    audit_done = latest_audit_status in {"completed", "partial"}
+    retest_done = len(confirmed_rounds) >= 2 and rounds_are_comparable(
+        confirmed_rounds[-1], confirmed_rounds[-2]
+    )
 
     def dependent_status(done: bool, ready: bool) -> str:
         if done:

@@ -9,6 +9,7 @@ def oeat_profile() -> RestaurantProfile:
             "location.venue": "万象城",
             "category.precise": "西餐厅",
             "price.display": "双人餐 300–450 元",
+            "product.list": ["牛排", "意面"],
             "service.baby_chair": True,
             "occasion.list": ["约会", "亲子"],
             "need.transport": "交通方便",
@@ -57,3 +58,12 @@ def test_small_query_set_keeps_price_and_verification_coverage() -> None:
 
     assert any(draft.category == "price" and "300–450" in draft.text for draft in drafts)
     assert any(draft.intent_type == "verification" for draft in drafts)
+
+
+def test_fifteen_question_set_uses_confirmed_products() -> None:
+    drafts = RestaurantRulePack().generate(oeat_profile(), count=15)
+
+    product_questions = [draft for draft in drafts if draft.category == "product"]
+    assert product_questions
+    assert any("牛排" in draft.text or "意面" in draft.text for draft in product_questions)
+    assert all("product.list" in draft.fact_keys for draft in product_questions)

@@ -201,3 +201,23 @@ it("renders scan runs returned by the API instead of fixed demo runs", async () 
   expect(screen.queryByText("18 / 20")).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "报告" })).toHaveAttribute("href", "/reports/scan-real?merchant=merchant-real");
 });
+
+it("shows the failure reason and a retry action for failed scans", async () => {
+  vi.mocked(getScanRuns).mockResolvedValue([
+    {
+      ...realRun,
+      status: "failed",
+      success_count: 0,
+      failure_count: 1,
+      error_summary: "Worker stopped before this scan finished; retry is available",
+      finished_at: "2026-08-11T05:10:00Z",
+      results: [],
+    },
+  ]);
+
+  render(await ScansPage({ searchParams: Promise.resolve({ merchant: "merchant-real" }) }));
+
+  expect(screen.getByText("Worker stopped before this scan finished; retry is available")).toBeVisible();
+  expect(screen.getByRole("button", { name: "重新执行" })).toBeVisible();
+  expect(screen.queryByRole("link", { name: "报告" })).not.toBeInTheDocument();
+});

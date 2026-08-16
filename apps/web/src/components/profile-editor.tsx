@@ -9,26 +9,7 @@ import {
   saveProfileAndGenerateAction,
 } from "@/app/merchants/[id]/actions";
 import type { MerchantProfileData, MerchantProfileFactData, ProfileValue } from "@/lib/contracts";
-
-const labels: Record<string, string> = {
-  "location.city": "城市",
-  "location.district": "区域",
-  "location.venue": "商场 / 商圈",
-  "location.address": "详细地址",
-  "category.legacy": "原行业",
-  "category.precise": "精准品类",
-  "price.display": "价格区间",
-  "hours.display": "营业时间",
-  "product.list": "招牌产品",
-  "strength.list": "特色优势",
-  "service.baby_chair": "宝宝椅",
-  "service.smoke_free": "无烟餐厅",
-  "service.open_kitchen": "明厨亮灶",
-  "service.parking": "停车",
-  "service.private_room": "包间",
-  "need.transport": "交通条件",
-  "occasion.list": "适用场景",
-};
+import { profileFieldLabel } from "@/lib/profile-field-labels";
 
 function displayValue(value: ProfileValue): string {
   if (Array.isArray(value)) return value.join("、");
@@ -147,7 +128,7 @@ export function ProfileEditor({
         <div className="section-heading"><div><p className="kicker">CONFIRMATION</p><h2>确认商家画像</h2></div></div>
         <div className="profile-fact-list">
           {facts.map((fact, index) => {
-            const label = labels[fact.field_key] ?? fact.field_key;
+            const label = profileFieldLabel(fact.field_key);
             return (
               <div className="profile-fact-row" key={fact.field_key}>
                 <label className="fact-confirm">

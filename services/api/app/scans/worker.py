@@ -1,7 +1,8 @@
 import asyncio
+import logging
 from collections.abc import Awaitable, Callable, Mapping
 from contextlib import suppress
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 from uuid import UUID
 
@@ -29,6 +30,9 @@ from app.scans.adapters.base import (
 from app.scans.models import Citation, QueryResult, ScanRun
 
 Sleep = Callable[[float], Awaitable[None]]
+WorkerStep = tuple[str, Callable[[], Awaitable[UUID | None]]]
+ErrorReporter = Callable[[str, Exception], None]
+logger = logging.getLogger(__name__)
 
 
 def utc_now() -> datetime:
@@ -40,6 +44,25 @@ def build_adapter_registry(settings: Settings) -> dict[str, SearchAdapter]:
     if not api_key:
         return {}
     return {"ark": ArkSearchAdapter(api_key=api_key, model=settings.ark_model)}
+
+
+async def run_worker_cycle(
+    steps: tuple[WorkerStep, ...],
+    report_error: ErrorReporter | None = None,
+) -> tuple[UUID | None, ...]:
+    results: list[UUID | None] = []
+    for name, step in steps:
+        try:
+            results.append(await step())
+        except asyncio.CancelledError:
+            raise
+        except Exception as error:  # keep one unexpected job from stopping every queue
+            if report_error is None:
+                logger.exception("Worker step %s failed", name)
+            else:
+                report_error(name, error)
+            results.append(None)
+    return tuple(results)
 
 
 async def process_next_scan(
@@ -188,6 +211,34 @@ async def process_next_scan(
     return run_id
 
 
+def recover_stale_scan_runs(
+    session_factory: sessionmaker[Session],
+    stale_after_seconds: int = 900,
+) -> int:
+    cutoff = utc_now() - timedelta(seconds=stale_after_seconds)
+    with session_factory() as session:
+        stale_runs = list(
+            session.scalars(
+                select(ScanRun).where(
+                    ScanRun.status == "running",
+                    ScanRun.started_at.is_not(None),
+                    ScanRun.started_at < cutoff,
+                )
+            )
+        )
+        if not stale_runs:
+            return 0
+        finished_at = utc_now()
+        for run in stale_runs:
+            run.status = "failed"
+            run.finished_at = finished_at
+            run.error_summary = (
+                "Worker stopped before this scan finished; retry is available"
+            )
+        session.commit()
+        return len(stale_runs)
+
+
 async def run_worker(poll_interval: float = 2.0) -> None:
     settings = get_settings()
     adapters = build_adapter_registry(settings)
@@ -202,12 +253,28 @@ async def run_worker(poll_interval: float = 2.0) -> None:
 
     heartbeat_task = asyncio.create_task(keep_heartbeat())
     try:
+        recovered_count = recover_stale_scan_runs(SessionLocal)
+        if recovered_count:
+            logger.warning("Recovered %s stale scan run(s)", recovered_count)
         while True:
-            context_id = await process_next_local_context(SessionLocal, adapters.get("ark"))
-            audit_id = await process_next_platform_audit(
-                SessionLocal, adapters.get("ark"), amap, tencent_maps
+            context_id, audit_id, processed_id = await run_worker_cycle(
+                (
+                    (
+                        "local_context",
+                        lambda: process_next_local_context(SessionLocal, adapters.get("ark")),
+                    ),
+                    (
+                        "platform_audit",
+                        lambda: process_next_platform_audit(
+                            SessionLocal, adapters.get("ark"), amap, tencent_maps
+                        ),
+                    ),
+                    (
+                        "scan",
+                        lambda: process_next_scan(SessionLocal, adapters),
+                    ),
+                )
             )
-            processed_id = await process_next_scan(SessionLocal, adapters)
             if processed_id is None and context_id is None and audit_id is None:
                 await asyncio.sleep(poll_interval)
     finally:

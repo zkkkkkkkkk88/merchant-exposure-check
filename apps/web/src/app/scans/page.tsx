@@ -3,6 +3,8 @@ import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { getMerchants, getScanRuns } from "@/lib/api";
 
+import { retryScanAction } from "./actions";
+
 const statusLabels = {
   queued: "等待执行",
   running: "检测中",
@@ -41,12 +43,22 @@ export default async function ScansPage({
                   <tr key={run.id}>
                     <th>{new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.created_at))}</th>
                     <td>{run.adapter_name === "ark" ? "火山方舟联网" : run.adapter_name}</td>
-                    <td>{statusLabels[run.status]}</td>
+                    <td>
+                      <span>{statusLabels[run.status]}</span>
+                      {run.error_summary && <small className="run-error-summary">{run.error_summary}</small>}
+                    </td>
                     <td>{run.success_count} / {run.success_count + run.failure_count}</td>
                     <td className="run-actions">
                       <Link className="text-link" href={`/scans/${run.id}?merchant=${merchantId}`}>查看 →</Link>
                       {(run.status === "completed" || run.status === "partial") && (
                         <Link className="text-link" href={`/reports/${run.id}?merchant=${merchantId}`}>报告</Link>
+                      )}
+                      {(run.status === "failed" || run.status === "partial") && (
+                        <form action={retryScanAction}>
+                          <input name="scanRunId" type="hidden" value={run.id} />
+                          <input name="merchantId" type="hidden" value={merchantId} />
+                          <button className="text-button" type="submit">重新执行</button>
+                        </form>
                       )}
                     </td>
                   </tr>

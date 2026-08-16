@@ -178,6 +178,13 @@ def test_journey_progress_marks_internal_evidence_and_keeps_action_as_ready(
     )
     db_session.commit()
 
+    for query in recommendation_queries[1:]:
+        QueryLibraryService.update_query(
+            db_session,
+            query.id,
+            QueryUpdate(is_enabled=False),
+        )
+
     response = client.get(f"/merchants/{merchant.id}/journey-progress")
 
     assert response.status_code == 200
@@ -206,6 +213,35 @@ def test_journey_progress_marks_internal_evidence_and_keeps_action_as_ready(
     assert retested["completed_count"] == 5
     assert retested["steps"][-1]["status"] == "completed"
     assert retested["steps"][-2]["status"] == "ready"
+
+    replacement_set = QueryLibraryService.generate(db_session, merchant.id, count=6)
+    replacement_queries = [
+        query for query in replacement_set.queries if query.intent_type == "recommendation"
+    ][:3]
+    QueryLibraryService.update_query(
+        db_session,
+        replacement_queries[0].id,
+        QueryUpdate(text="Lancang private dental clinics with verified weekend service?"),
+    )
+    for query in replacement_queries:
+        QueryLibraryService.update_query(
+            db_session,
+            query.id,
+            QueryUpdate(review_status="approved", is_enabled=True),
+        )
+    replacement_validation = MobileCheckService(db_session).create_validation_set(merchant.id)
+    db_session.add(
+        MobileCheckRound(
+            merchant_id=merchant.id,
+            validation_set_id=replacement_validation.id,
+            status="confirmed",
+        )
+    )
+    db_session.commit()
+
+    changed_questions = client.get(f"/merchants/{merchant.id}/journey-progress").json()
+    assert changed_questions["steps"][-1]["status"] == "ready"
+    assert changed_questions["completed_count"] == 4
 
 
 def test_report_calculates_target_mention_and_accepts_manual_check(

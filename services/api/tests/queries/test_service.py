@@ -142,6 +142,10 @@ def test_generation_creates_incrementing_query_set_versions(db_session: Session)
     assert first.version == 1
     assert second.version == 2
     assert first.id != second.id
+    db_session.refresh(first)
+    assert first.is_archived is True
+    assert second.is_archived is False
+    assert [item.id for item in QueryLibraryService.list_sets(db_session, merchant.id)] == [second.id]
     assert len(first.queries) == 6
     assert all(query.review_status == "pending" for query in first.queries)
     assert all(query.intent_type in {"recommendation", "verification"} for query in first.queries)

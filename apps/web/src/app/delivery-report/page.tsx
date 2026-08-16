@@ -11,6 +11,8 @@ import {
   getMobileWorkspace,
   getQuerySets,
 } from "@/lib/api";
+import { profileFieldLabel } from "@/lib/profile-field-labels";
+import { buildDeliveryReadiness } from "@/lib/delivery-readiness";
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
@@ -49,6 +51,14 @@ export default async function DeliveryReportPage({
     .filter((item) => item.questionCount >= 2);
   const platformGaps = (audit?.platforms ?? []).filter((item) => item.status !== "complete");
   const playbook = workspace?.recommendationPlaybook;
+  const readiness = buildDeliveryReadiness({
+    confirmedFactCount: confirmedFacts.length,
+    approvedQuestionCount: selectedQueries.length,
+    confirmedAnswerCount: metrics?.confirmedCount ?? 0,
+    primaryCount: metrics?.primaryCount ?? 0,
+    platformAuditRecorded: Boolean(audit && audit.platforms.length > 0),
+    comparableRetest: Boolean(playbook?.comparison),
+  });
 
   return (
     <AppShell>
@@ -61,9 +71,31 @@ export default async function DeliveryReportPage({
           </div>
           <div className="report-actions">
             <MerchantSwitcher merchants={merchants} merchantId={merchantId} />
-            <PrintReportButton />
+            <PrintReportButton
+              disabled={!readiness.accepted}
+              disabledReason={readiness.blockingReasons.join("；")}
+            />
           </div>
         </header>
+
+        <section className={`report-readiness ${readiness.accepted ? "accepted" : "blocked"}`} aria-label="交付验收清单">
+          <header>
+            <div>
+              <p className="kicker">DELIVERY GATE</p>
+              <h2>{readiness.accepted ? "核心验收已通过" : "核心验收尚未通过"}</h2>
+            </div>
+            <strong>{readiness.accepted ? "可交付" : `${readiness.blockingReasons.length} 项阻塞`}</strong>
+          </header>
+          <ul>
+            {readiness.items.map((item) => (
+              <li className={item.complete ? "complete" : item.blocking ? "blocking" : "supporting"} key={item.key}>
+                <span aria-hidden="true">{item.complete ? "✓" : item.blocking ? "!" : "·"}</span>
+                <div><strong>{item.label}</strong><small>{item.detail}</small></div>
+              </li>
+            ))}
+          </ul>
+          {!readiness.accepted && <p>完成阻塞项后才能打印交付报告；辅助证据不会改变“至少推荐一次”的核心验收结论。</p>}
+        </section>
 
         <section className="report-conclusion" aria-label="交付结论">
           <div><span>至少首批推荐一次</span><strong>{firstBatchAchieved ? "是" : "否"}</strong></div>
@@ -83,7 +115,7 @@ export default async function DeliveryReportPage({
             </dl>
             <dl className="report-facts">
               {confirmedFacts.length > 0 ? confirmedFacts.slice(0, 8).map((fact) => (
-                <div key={fact.field_key}><dt>{fact.field_key}</dt><dd>{Array.isArray(fact.value) ? fact.value.join("、") : String(fact.value)}</dd></div>
+                <div key={fact.field_key}><dt>{profileFieldLabel(fact.field_key)}</dt><dd>{Array.isArray(fact.value) ? fact.value.join("、") : String(fact.value)}</dd></div>
               )) : <div><dt>已确认资料</dt><dd>暂无</dd></div>}
             </dl>
           </div>

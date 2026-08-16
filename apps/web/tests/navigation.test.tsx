@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 import { AppShell } from "@/components/app-shell";
+import { ServiceStatus } from "@/components/service-status";
 
 const navigation = vi.hoisted(() => ({
   pathname: "/merchants/m1",
@@ -115,6 +116,20 @@ it("shows merchant journey progress and exposes the full navigation on mobile", 
     "href",
     "/delivery-report?merchant=m1",
   );
+});
+
+it("names the failed service in the compact mobile status", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    status: "degraded",
+    api: "ok",
+    database: "ok",
+    worker: "offline",
+    integrations: { doubao: true, amap: true, tencent_map: true },
+  }), { status: 200 })));
+
+  render(<ServiceStatus compact />);
+
+  expect(await screen.findByText("后台未运行")).toBeVisible();
 });
 
 it("marks the journey step that matches the current page", async () => {

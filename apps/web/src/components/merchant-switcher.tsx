@@ -1,6 +1,8 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import { pathWithMerchant, persistMerchantContext } from "@/lib/merchant-context";
 
 type MerchantOption = {
   id: string;
@@ -17,6 +19,7 @@ export function MerchantSwitcher({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   return (
     <label className="merchant-switch">
@@ -24,7 +27,11 @@ export function MerchantSwitcher({
       <select
         aria-label="切换商家"
         value={merchantId}
-        onChange={(event) => router.push(`${pathname}?merchant=${encodeURIComponent(event.target.value)}`)}
+        onChange={(event) => {
+          const merchantId = event.target.value;
+          persistMerchantContext(merchantId);
+          router.push(pathWithMerchant(pathname, searchParams?.toString() ?? "", merchantId));
+        }}
       >
         {!merchantId && <option value="">请选择商家</option>}
         {merchants.map((merchant) => (

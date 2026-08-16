@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import select
@@ -20,7 +21,12 @@ from app.scans.adapters.base import (
 )
 from app.scans.models import QueryResult, ScanRun
 from app.scans.service import ScanService
-from app.scans.worker import build_adapter_registry, process_next_scan
+from app.scans.worker import (
+    build_adapter_registry,
+    process_next_scan,
+    recover_stale_scan_runs,
+    run_worker_cycle,
+)
 
 
 def test_standalone_worker_registers_all_foreign_key_tables() -> None:
@@ -59,6 +65,37 @@ def test_worker_registry_only_enables_ark_with_server_key() -> None:
     assert set(registry) == {"ark"}
 
 
+@pytest.mark.asyncio
+async def test_worker_cycle_isolates_unexpected_step_failure() -> None:
+    calls: list[str] = []
+    errors: list[tuple[str, str]] = []
+
+    async def broken_context():
+        calls.append("context")
+        raise RuntimeError("unexpected failure")
+
+    async def completed_audit():
+        calls.append("audit")
+        return None
+
+    async def completed_scan():
+        calls.append("scan")
+        return None
+
+    results = await run_worker_cycle(
+        (
+            ("local_context", broken_context),
+            ("platform_audit", completed_audit),
+            ("scan", completed_scan),
+        ),
+        report_error=lambda name, error: errors.append((name, str(error))),
+    )
+
+    assert results == (None, None, None)
+    assert calls == ["context", "audit", "scan"]
+    assert errors == [("local_context", "unexpected failure")]
+
+
 def create_approved_scan(db_session: Session, query_count: int) -> ScanRun:
     merchant = MerchantService.create(
         db_session,
@@ -83,6 +120,23 @@ def create_approved_scan(db_session: Session, query_count: int) -> ScanRun:
             QueryUpdate(review_status="rejected", is_enabled=False),
         )
     return ScanService.create_run(db_session, merchant.id, query_set.id, "sequence")
+
+
+def test_worker_marks_stale_running_scans_failed(db_session: Session) -> None:
+    stale = create_approved_scan(db_session, query_count=1)
+    stale.status = "running"
+    stale.started_at = datetime.now(UTC) - timedelta(minutes=30)
+    db_session.commit()
+    factory = sessionmaker(bind=db_session.get_bind(), expire_on_commit=False)
+
+    recovered = recover_stale_scan_runs(factory, stale_after_seconds=900)
+
+    db_session.expire_all()
+    failed = db_session.get(ScanRun, stale.id)
+    assert recovered == 1
+    assert failed is not None and failed.status == "failed"
+    assert failed.finished_at is not None
+    assert failed.error_summary == "Worker stopped before this scan finished; retry is available"
 
 
 @pytest.mark.asyncio

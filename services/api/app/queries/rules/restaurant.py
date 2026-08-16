@@ -77,6 +77,19 @@ class RestaurantRulePack:
                     scope_keys,
                 )
 
+        products = profile.facts.get("product.list")
+        if isinstance(products, list):
+            for product in products:
+                if not isinstance(product, str) or not product.strip():
+                    continue
+                for scope in scopes[:2]:
+                    add(
+                        f"{scope}能提供{product.strip()}的{category}有哪些？",
+                        "product",
+                        "检测已确认产品或服务项目下的推荐覆盖",
+                        ["location.city", "category.precise", "product.list"],
+                    )
+
         price = self._text(profile.facts, "price.display")
         if price:
             for text in (

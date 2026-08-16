@@ -33,7 +33,18 @@ export function ServiceStatus({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     const ready = status?.status === "ok";
-    return <span className={`mobile-service-state ${ready ? "ready" : "warning"}`}>{ready ? "状态：可用" : "状态：需检查"}</span>;
+    const label = unreachable
+      ? "服务未连接"
+      : !status
+        ? "正在检查"
+        : status.database === "error"
+          ? "数据库异常"
+          : status.worker === "offline"
+            ? "后台未运行"
+            : !status.integrations.doubao
+              ? "豆包未配置"
+              : "状态：可用";
+    return <span className={`mobile-service-state ${ready ? "ready" : "warning"}`}>{label}</span>;
   }
 
   if (!status) {

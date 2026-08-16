@@ -9,6 +9,7 @@ from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.scans.schemas import ManualResultsCreate, ScanRunCreate, ScanRunRead
 from app.scans.service import (
     InvalidManualResultError,
+    InvalidScanStateError,
     NoApprovedQueriesError,
     QuerySetNotFoundError,
     ScanNotFoundError,
@@ -52,6 +53,21 @@ def get_scan_run(scan_run_id: UUID, session: SessionDep) -> ScanRunRead:
     run = ScanService.get(session, scan_run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="Scan run not found")
+    return ScanRunRead.model_validate(run)
+
+
+@router.post(
+    "/{scan_run_id}/retry",
+    response_model=ScanRunRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def retry_scan_run(scan_run_id: UUID, session: SessionDep) -> ScanRunRead:
+    try:
+        run = ScanService.retry_run(session, scan_run_id)
+    except ScanNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Scan run not found") from error
+    except InvalidScanStateError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
     return ScanRunRead.model_validate(run)
 
 

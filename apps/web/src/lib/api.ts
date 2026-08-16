@@ -175,6 +175,18 @@ export function getScanRun(scanRunId: string): Promise<ScanRunData | null> {
   );
 }
 
+export async function retryScanRun(scanRunId: string): Promise<ScanRunData> {
+  const response = await fetch(
+    `${API_BASE_URL}/scan-runs/${encodeURIComponent(scanRunId)}/retry`,
+    { method: "POST", cache: "no-store" },
+  );
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({})) as { detail?: string };
+    throw new ApiError(response.status, detail.detail ?? "重新执行检测失败，请稍后再试。");
+  }
+  return response.json() as Promise<ScanRunData>;
+}
+
 export function getReport(merchantId: string, scanRunId: string): Promise<ReportData | null> {
   return readJson<ReportData>(
     `/merchants/${encodeURIComponent(merchantId)}/reports/${encodeURIComponent(scanRunId)}`,

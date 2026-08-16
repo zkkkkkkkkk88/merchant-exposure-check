@@ -12,6 +12,7 @@ from app.merchants.service import MerchantService
 from app.queries.generator import TemplateQueryGenerator
 from app.queries.schemas import QueryUpdate
 from app.queries.service import QueryLibraryService
+from app.scans.service import ScanService
 
 
 @pytest.fixture
@@ -104,3 +105,40 @@ def test_manual_import_rejects_query_from_another_set(
 
     assert response.status_code == 422
     assert response.json() == {"detail": "Manual result query does not belong to scan"}
+
+
+def test_retry_failed_scan_creates_a_new_queued_run(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    merchant, query_set, _ = create_approved_query_set(db_session)
+    original = ScanService.create_run(db_session, merchant.id, query_set.id, "ark")
+    original.status = "failed"
+    original.error_summary = "provider unavailable"
+    db_session.commit()
+
+    response = client.post(f"/scan-runs/{original.id}/retry")
+
+    assert response.status_code == 201
+    retried = response.json()
+    assert retried["id"] != str(original.id)
+    assert retried["status"] == "queued"
+    assert retried["merchant_id"] == str(merchant.id)
+    assert retried["query_set_id"] == str(query_set.id)
+    assert retried["adapter_name"] == "ark"
+    assert db_session.get(type(original), original.id).status == "failed"
+
+
+def test_retry_rejects_a_completed_scan(
+    client: TestClient,
+    db_session: Session,
+) -> None:
+    merchant, query_set, _ = create_approved_query_set(db_session)
+    original = ScanService.create_run(db_session, merchant.id, query_set.id, "ark")
+    original.status = "completed"
+    db_session.commit()
+
+    response = client.post(f"/scan-runs/{original.id}/retry")
+
+    assert response.status_code == 409
+    assert response.json() == {"detail": "Only failed or partial scans can be retried"}

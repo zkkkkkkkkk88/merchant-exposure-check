@@ -47,7 +47,7 @@ it("parses pasted merchant text and requires confirmation before query generatio
   expect(screen.getByDisplayValue("双人餐 300–450 元")).toBeVisible();
   expect(screen.getByRole("button", { name: "保存并生成精准问题" })).toBeDisabled();
 
-  fireEvent.click(screen.getByRole("checkbox", { name: "确认 城市" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "确认 省份 / 城市" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "确认 精准品类" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "确认 价格区间" }));
   fireEvent.click(screen.getByRole("checkbox", { name: "确认 宝宝椅" }));

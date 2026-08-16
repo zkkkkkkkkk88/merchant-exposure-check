@@ -187,6 +187,7 @@ export function QueryTable({
       </div>
 
       <div className="table-wrap">
+        <p className="mobile-table-hint">每道问题可直接审核、启用或停用。</p>
         <table aria-label="待审核问题库">
           <thead>
             <tr><th>问题</th><th>检测类型</th><th>分类</th><th>生成理由</th><th>优先级</th><th>状态</th><th>操作</th></tr>
@@ -197,7 +198,7 @@ export function QueryTable({
               const isSaving = status?.state === "saving";
               return (
                 <tr className={!item.isEnabled || item.reviewStatus === "rejected" ? "excluded-row" : ""} key={item.id}>
-                  <th>
+                  <th data-label="问题">
                     <input
                       aria-label={`编辑问题 ${item.id}`}
                       disabled={isSaving}
@@ -206,12 +207,12 @@ export function QueryTable({
                       onChange={(event) => replaceQuery(item.id, { ...item, text: event.target.value })}
                     />
                   </th>
-                  <td><span className={`intent-label intent-${item.intentType ?? "recommendation"}`}>{item.intentType === "verification" ? "信息验证" : "推荐检测"}</span></td>
-                  <td>{categories.find(([value]) => value === item.category)?.[1]}</td>
-                  <td>{item.reason}</td>
-                  <td>{item.priority}</td>
-                  <td>{item.reviewStatus === "approved" ? "已批准" : item.reviewStatus === "rejected" ? "已拒绝" : "待审核"}</td>
-                  <td>
+                  <td data-label="检测类型"><span className={`intent-label intent-${item.intentType ?? "recommendation"}`}>{item.intentType === "verification" ? "信息验证" : "推荐检测"}</span></td>
+                  <td data-label="分类">{categories.find(([value]) => value === item.category)?.[1]}</td>
+                  <td data-label="生成理由">{item.reason}</td>
+                  <td data-label="优先级">{item.priority}</td>
+                  <td data-label="状态">{item.reviewStatus === "approved" ? "已批准" : item.reviewStatus === "rejected" ? "已拒绝" : "待审核"}</td>
+                  <td data-label="操作">
                     {item.reviewStatus === "pending" ? (
                       <>
                         <button

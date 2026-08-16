@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
+
+import { persistMerchantContext } from "@/lib/merchant-context";
 
 import { BackLink } from "./back-link";
 import { ServiceStatus } from "./service-status";
@@ -39,6 +41,9 @@ function ShellContent({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const profileMerchant = pathname.match(/^\/merchants\/([^/]+)$/)?.[1];
   const merchantId = profileMerchant ?? searchParams?.get("merchant");
+  useEffect(() => {
+    if (merchantId) persistMerchantContext(merchantId);
+  }, [merchantId]);
   const withMerchant = (href: string) => {
     if (!merchantId) return href;
     if (href === "/merchants") return `/merchants/${encodeURIComponent(merchantId)}`;
