@@ -1,15 +1,73 @@
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.db.session import get_session
 from app.main import app
+from app.mobile_checks.router import get_mobile_source_adapter
 from app.mobile_checks.service import MobileCheckService
+from app.scans.adapters.base import RawCitation, SearchRequest, SearchResponse
 from tests.mobile_checks.test_service import add_merchant, add_queries
 
 
 def client_for(session: Session) -> TestClient:
     app.dependency_overrides[get_session] = lambda: session
     return TestClient(app)
+
+
+class SourceDiscoveryAdapter:
+    name = "fake"
+
+    async def search(self, request: SearchRequest) -> SearchResponse:
+        return SearchResponse(
+            raw_text="",
+            citations=[
+                RawCitation(
+                    url="https://public.example/source",
+                    title="公开页面",
+                    snippet="地址和服务项目",
+                )
+            ],
+        )
+
+
+def test_discover_sources_returns_target_and_recurring_competitor(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    client = client_for(db_session)
+    app.dependency_overrides[get_mobile_source_adapter] = lambda: SourceDiscoveryAdapter()
+
+    response = client.post(
+        f"/merchants/{merchant.id}/mobile-checks/discover-sources",
+        json={
+            "location_text": "澜沧县",
+            "competitors": [
+                {"name": "王天佑口腔诊所", "occurrence_count": 2},
+                {"name": "偶发诊所", "occurrence_count": 1},
+            ],
+        },
+    )
+
+    assert response.status_code == 200
+    assert [group["entity_name"] for group in response.json()["groups"]] == [
+        merchant.name,
+        "王天佑口腔诊所",
+    ]
+    assert response.json()["external_call_count"] == 2
+    app.dependency_overrides.clear()
+
+
+def test_discover_sources_rejects_unknown_merchant(db_session: Session) -> None:
+    client = client_for(db_session)
+    app.dependency_overrides[get_mobile_source_adapter] = lambda: SourceDiscoveryAdapter()
+
+    response = client.post(
+        f"/merchants/{uuid4()}/mobile-checks/discover-sources",
+        json={"competitors": []},
+    )
+
+    assert response.status_code == 404
+    app.dependency_overrides.clear()
 
 
 def test_round_can_be_created_in_one_batch_and_confirmed(db_session: Session) -> None:

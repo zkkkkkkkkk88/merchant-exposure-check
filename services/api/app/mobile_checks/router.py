@@ -6,22 +6,42 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.session import get_session
 from app.mobile_checks.models import MobileEvidence
 from app.mobile_checks.schemas import (
     MobileEvidenceRead,
     MobileRoundCreate,
     MobileRoundRead,
+    MobileSourceDiscoveryCreate,
+    MobileSourceDiscoveryRead,
     MobileValidationSetCreate,
     MobileValidationSetRead,
     MobileWorkspaceRead,
 )
 from app.mobile_checks.service import MobileCheckService, NoApprovedQueriesError
+from app.mobile_checks.source_discovery import MobileSourceDiscoveryService
+from app.scans.adapters.ark import ArkSearchAdapter
+from app.scans.adapters.base import SearchAdapter
 
 router = APIRouter(tags=["mobile checks"])
 SessionDep = Annotated[Session, Depends(get_session)]
 ALLOWED_IMAGES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_EVIDENCE_BYTES = 10 * 1024 * 1024
+
+
+def get_mobile_source_adapter() -> SearchAdapter:
+    settings = get_settings()
+    api_key = settings.ark_api_key.get_secret_value()
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="未配置联网公开来源搜索服务",
+        )
+    return ArkSearchAdapter(api_key=api_key, model=settings.ark_model)
+
+
+SourceAdapterDep = Annotated[SearchAdapter, Depends(get_mobile_source_adapter)]
 
 
 @router.post("/merchants/{merchant_id}/mobile-validation-sets", response_model=MobileValidationSetRead, status_code=status.HTTP_201_CREATED)
@@ -65,6 +85,25 @@ def confirm_round(merchant_id: UUID, round_id: UUID, session: SessionDep):
 def get_workspace(merchant_id: UUID, session: SessionDep):
     try:
         return MobileCheckService(session).get_workspace(merchant_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail="merchant not found") from exc
+
+
+@router.post(
+    "/merchants/{merchant_id}/mobile-checks/discover-sources",
+    response_model=MobileSourceDiscoveryRead,
+)
+async def discover_mobile_sources(
+    merchant_id: UUID,
+    payload: MobileSourceDiscoveryCreate,
+    session: SessionDep,
+    adapter: SourceAdapterDep,
+):
+    try:
+        return await MobileSourceDiscoveryService(session, adapter).discover(
+            merchant_id,
+            payload,
+        )
     except LookupError as exc:
         raise HTTPException(status_code=404, detail="merchant not found") from exc
 
