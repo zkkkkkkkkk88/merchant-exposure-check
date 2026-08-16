@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { selectMobileValidationSet } from "@/lib/api";
+import { discoverMobileSources, selectMobileValidationSet } from "@/lib/api";
+import type { MobileSourceDiscoveryData, MobileSourceDiscoveryPayload } from "@/lib/contracts";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 const sourceTypes: Record<string, string> = { 机构介绍: "profile", 工商: "registry", 招聘: "recruitment", 抖音: "douyin", 本地媒体: "local_media", 政府医院: "government", 行业内容: "industry" };
@@ -17,6 +18,13 @@ export async function selectMobileValidationQuestions(formData: FormData): Promi
   const merchantId = String(formData.get("merchantId") ?? "");
   await selectMobileValidationSet(merchantId, formData.getAll("queryIds").map(String));
   redirect(`/mobile-checks?merchant=${encodeURIComponent(merchantId)}`);
+}
+
+export async function discoverMobileSourcesAction(input: {
+  merchantId: string;
+  payload: MobileSourceDiscoveryPayload;
+}): Promise<MobileSourceDiscoveryData> {
+  return discoverMobileSources(input.merchantId, input.payload);
 }
 
 export async function saveMobileRound(formData: FormData): Promise<void> {

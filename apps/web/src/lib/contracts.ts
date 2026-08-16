@@ -213,6 +213,31 @@ export interface MobileValidationSetData {
   items: Array<{ id: string; query_id: string; position: number; query: QueryData }>;
 }
 
+export interface MobileSourceCandidateData {
+  entity_name: string;
+  source_type: "profile" | "registry" | "recruitment" | "douyin" | "local_media" | "government" | "industry" | "other";
+  title: string;
+  facts: string[];
+  url: string;
+  evidence_kind: "official" | "third_party";
+  access_status: "correctable" | "reference";
+  reused_from_audit: boolean;
+}
+
+export interface MobileSourceDiscoveryData {
+  groups: Array<{
+    entity_name: string;
+    sources: MobileSourceCandidateData[];
+    error: string | null;
+  }>;
+  external_call_count: number;
+}
+
+export interface MobileSourceDiscoveryPayload {
+  location_text: string | null;
+  competitors: Array<{ name: string; occurrence_count: number }>;
+}
+
 export interface MobileWorkspaceData {
   latestRoundId: string | null;
   sourceRoundId: string | null;

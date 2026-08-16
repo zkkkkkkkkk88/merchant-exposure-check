@@ -13,6 +13,8 @@ import type {
   MobileWorkspaceData,
   PlatformAuditRunData,
   JourneyProgressData,
+  MobileSourceDiscoveryData,
+  MobileSourceDiscoveryPayload,
 } from "./contracts";
 import type { MerchantPayload } from "@/components/merchant-form";
 
@@ -213,6 +215,25 @@ export async function getMobileValidationSets(merchantId: string): Promise<Mobil
 
 export function getMobileWorkspace(merchantId: string): Promise<MobileWorkspaceData | null> {
   return readJson<MobileWorkspaceData>(`/merchants/${encodeURIComponent(merchantId)}/mobile-checks/workspace`, "暂时无法读取手机版豆包实测。");
+}
+
+export async function discoverMobileSources(
+  merchantId: string,
+  payload: MobileSourceDiscoveryPayload,
+): Promise<MobileSourceDiscoveryData> {
+  const response = await fetch(
+    `${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-checks/discover-sources`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  );
+  if (!response.ok) {
+    const detail = await response.json().catch(() => ({})) as { detail?: string };
+    throw new ApiError(response.status, detail.detail ?? "自动查找公开来源失败，请稍后重试。");
+  }
+  return response.json() as Promise<MobileSourceDiscoveryData>;
 }
 
 export function getLatestPlatformAudit(merchantId: string): Promise<PlatformAuditRunData | null> {
