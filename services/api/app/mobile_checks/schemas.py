@@ -47,6 +47,47 @@ class MobileSourceCreate(BaseModel):
     is_confirmed: bool = False
 
 
+class CompetitorOccurrence(BaseModel):
+    name: str = Field(min_length=1, max_length=300)
+    occurrence_count: int = Field(ge=1, le=3)
+
+
+class MobileSourceDiscoveryCreate(BaseModel):
+    location_text: str | None = Field(default=None, max_length=300)
+    competitors: list[CompetitorOccurrence] = Field(default_factory=list, max_length=20)
+
+
+class MobileSourceCandidate(BaseModel):
+    entity_name: str
+    source_type: Literal[
+        "profile",
+        "registry",
+        "recruitment",
+        "douyin",
+        "local_media",
+        "government",
+        "industry",
+        "other",
+    ]
+    title: str
+    facts: list[str] = Field(default_factory=list)
+    url: str
+    evidence_kind: Literal["official", "third_party"]
+    access_status: Literal["correctable", "reference"]
+    reused_from_audit: bool = False
+
+
+class MobileSourceDiscoveryGroup(BaseModel):
+    entity_name: str
+    sources: list[MobileSourceCandidate] = Field(default_factory=list)
+    error: str | None = None
+
+
+class MobileSourceDiscoveryRead(BaseModel):
+    groups: list[MobileSourceDiscoveryGroup]
+    external_call_count: int
+
+
 class MobileRoundCreate(BaseModel):
     validation_set_id: UUID
     location_text: str | None = Field(default=None, max_length=300)
