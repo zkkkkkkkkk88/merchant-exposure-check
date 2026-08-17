@@ -594,6 +594,30 @@ tbody th { font-weight: 600; }
 .report-card ul { color: var(--muted); line-height: 1.7; margin: 16px 0 0; padding-left: 18px; }
 .report-platform-list article { align-items: start; display: grid; gap: 14px; grid-template-columns: minmax(140px, .5fr) 100px 1fr; }
 .report-platform-list article p { margin: 0; }
+.report-channel-maintenance { border-top: 1px solid var(--line); margin-top: 30px; padding-top: 26px; }
+.report-channel-maintenance > header { margin-bottom: 22px; }
+.report-channel-maintenance > header h3 { font-family: var(--serif); font-size: 23px; font-weight: 500; margin: 0 0 7px; }
+.report-channel-maintenance > header p { color: var(--muted); font-size: 13px; line-height: 1.65; margin: 0; }
+.report-channel-block + .report-channel-block { margin-top: 24px; }
+.report-channel-block h4 { font-size: 12px; margin: 0 0 12px; }
+.report-cited-channel-grid { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.report-cited-channel-grid article { background: rgba(255, 255, 255, .48); border: 1px solid var(--line); min-width: 0; padding: 18px; }
+.report-cited-channel-grid article > header { align-items: start; display: flex; gap: 12px; justify-content: space-between; }
+.report-cited-channel-grid article > header strong { overflow-wrap: anywhere; }
+.report-cited-channel-grid article > p { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 12px 0; }
+.report-cited-channel-grid ul { display: grid; gap: 7px; list-style: none; margin: 0; padding: 0; }
+.report-cited-channel-grid a { color: var(--accent); display: block; font-size: 12px; overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 3px; }
+.report-channel-badge { border: 1px solid var(--line); color: var(--muted); flex: 0 0 auto; font-size: 10px; padding: 4px 7px; }
+.report-channel-badge.maintainable { border-color: #37735b; color: #37735b; }
+.report-channel-badge.correctable { border-color: var(--accent); color: var(--accent); }
+.report-candidate-channel-list { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
+.report-candidate-channel-list li { align-items: start; border-bottom: 1px solid var(--line); display: grid; gap: 20px; grid-template-columns: minmax(180px, .35fr) 1fr; padding: 13px 0; }
+.report-candidate-channel-list strong { font-size: 12px; }
+.report-candidate-channel-list span { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.report-channel-guidance { background: var(--accent-pale); border-left: 3px solid var(--accent); margin-top: 22px; padding: 14px 18px; }
+.report-channel-guidance p { color: var(--muted); font-size: 11px; line-height: 1.65; margin: 0; }
+.report-channel-guidance p + p { margin-top: 5px; }
+.report-channel-guidance strong { color: var(--ink); }
 .report-action-list > article { border-top: 1px solid var(--line); display: grid; gap: 22px; grid-template-columns: 34px 1fr; padding: 22px 0; }
 .report-action-list > article > span { color: var(--accent); font-family: var(--serif); }
 .report-action-list h3 { font-size: 18px; margin: 0 0 8px; }
@@ -619,6 +643,8 @@ tbody th { font-weight: 600; }
   .report-conclusion { grid-template-columns: 1fr 1fr; }
   .report-conclusion > div:nth-child(3) { border-left: 0; }
   .report-two-column, .report-card-grid { grid-template-columns: 1fr; }
+  .report-cited-channel-grid { grid-template-columns: 1fr; }
+  .report-candidate-channel-list li { gap: 6px; grid-template-columns: 1fr; }
   .report-platform-list article { grid-template-columns: 1fr auto; }
   .report-platform-list article p { grid-column: 1 / -1; }
   .report-comparison { grid-template-columns: 1fr; }
@@ -629,6 +655,6 @@ tbody th { font-weight: 600; }
   .navigation-rail, .mobile-header, .mobile-navigation, .global-back, .journey-progress, .report-actions, .report-answer-appendix { display: none !important; }
   .app-content { margin: 0; }
   .delivery-report { max-width: none; padding: 0; }
-  .delivery-report-section, .report-card, .report-answer-list article, .report-action-list > article { break-inside: avoid; }
+  .delivery-report-section, .report-card, .report-answer-list article, .report-action-list > article, .report-channel-maintenance, .report-cited-channel-grid article { break-inside: avoid; }
   .delivery-report-header h1 { font-size: 34px; }
 }

@@ -1,8 +1,10 @@
 import { AppShell } from "@/components/app-shell";
 import { MerchantSwitcher } from "@/components/merchant-switcher";
 import { PrintReportButton } from "@/components/print-report-button";
+import { PublicChannelMaintenance } from "@/components/public-channel-maintenance";
 import { SourceGapTable } from "@/components/source-gap-table";
 import {
+  getDashboard,
   getJourneyProgress,
   getLatestPlatformAudit,
   getMerchant,
@@ -11,6 +13,7 @@ import {
   getMobileWorkspace,
   getQuerySets,
 } from "@/lib/api";
+import { buildPublicChannelMaintenance } from "@/lib/public-channel-maintenance";
 import { profileFieldLabel } from "@/lib/profile-field-labels";
 import { buildDeliveryReadiness, deliveryVisibilityLevel } from "@/lib/delivery-readiness";
 
@@ -32,13 +35,14 @@ export default async function DeliveryReportPage({
     return <AppShell><div className="state-page"><h1>目标商家不存在</h1><MerchantSwitcher merchants={merchants} merchantId="" /></div></AppShell>;
   }
 
-  const [merchant, profile, querySets, workspace, audit, journey] = await Promise.all([
+  const [merchant, profile, querySets, workspace, audit, journey, dashboard] = await Promise.all([
     getMerchant(merchantId),
     getMerchantProfile(merchantId),
     getQuerySets(merchantId),
     getMobileWorkspace(merchantId),
     getLatestPlatformAudit(merchantId),
     getJourneyProgress(merchantId),
+    getDashboard(merchantId),
   ]);
   if (!merchant) return <AppShell><div className="state-page"><h1>商家资料暂不可用</h1></div></AppShell>;
 
@@ -65,6 +69,10 @@ export default async function DeliveryReportPage({
     mentionCount: metrics?.mentionCount ?? 0,
     primaryCount: metrics?.primaryCount ?? 0,
   });
+  const channelMaintenance = buildPublicChannelMaintenance(
+    workspace?.channelMaintenance,
+    dashboard?.actions ?? [],
+  );
 
   return (
     <AppShell>
@@ -159,6 +167,9 @@ export default async function DeliveryReportPage({
             )) : <p className="report-empty">暂无平台缺口记录。</p>}
           </div>
           {workspace && workspace.sourceGaps.length > 0 && <SourceGapTable data={workspace} />}
+          {(workspace?.channelMaintenance || dashboard?.actions.length) && (
+            <PublicChannelMaintenance data={channelMaintenance} />
+          )}
         </section>
 
         <section className="delivery-report-section" id="improvement-playbook">

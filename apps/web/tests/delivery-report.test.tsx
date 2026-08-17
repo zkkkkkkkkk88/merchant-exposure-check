@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import DeliveryReportPage from "@/app/delivery-report/page";
 import { PrintReportButton } from "@/components/print-report-button";
 import {
+  getDashboard,
   getJourneyProgress,
   getLatestPlatformAudit,
   getMerchant,
@@ -16,6 +17,7 @@ import {
 vi.mock("@/components/app-shell", () => ({ AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/components/merchant-switcher", () => ({ MerchantSwitcher: () => <div>切换商家</div> }));
 vi.mock("@/lib/api", () => ({
+  getDashboard: vi.fn(),
   getJourneyProgress: vi.fn(),
   getLatestPlatformAudit: vi.fn(),
   getMerchant: vi.fn(),
@@ -38,6 +40,23 @@ describe("delivery report", () => {
       { field_key: "contact.phone", value: "0879-1234567", confirmation_status: "confirmed", source_urls: ["https://example.com"] },
       { field_key: "location.city", value: "云南", confirmation_status: "confirmed", source_urls: [] },
     ] });
+    vi.mocked(getDashboard).mockResolvedValue({
+      merchant: { id: "m1", name: "示例口腔" },
+      lastRunAt: "2026-08-14",
+      metrics: {
+        mentionRate: 1, visibilityStage: "mentioned", readinessScore: 0.8,
+        profileCompleteness: 0.8, publicVerifiability: 0.7, highIntentHitRate: 0.6,
+        competitorGapClosure: 0.5, sourceCoverageRate: 0.7, validQueryCount: 3, totalQueryCount: 3,
+      },
+      trend: [], categories: [], competitors: [],
+      actions: [{
+        id: "coverage-category", title: "统一精准品类信息", priority: "high", evidenceCount: 3,
+        description: "相关问题需要统一品类表述。", steps: ["核对规范品类"], channels: ["地图商户页"],
+        materials: ["执业许可"], example: "示例表述", completionCriteria: "两个公开页面信息一致。",
+        questions: ["示例问题"],
+        sourceChannels: [{ domain: "m.map.360.cn", citationCount: 2, access: "submission", label: "需要认领或纠错" }],
+      }],
+    });
     vi.mocked(getQuerySets).mockResolvedValue([]);
     vi.mocked(getJourneyProgress).mockResolvedValue({ merchant_id: "m1", completed_count: 4, total_count: 6, current_step: "action", steps: [] });
     vi.mocked(getLatestPlatformAudit).mockResolvedValue({
@@ -55,6 +74,17 @@ describe("delivery report", () => {
         { position: 2, question: "澜沧有哪些洁牙机构？", answer: "第二份完整原始回答。", mentionLevel: "supplementary", mentionLabel: "补充提及", targetPosition: 4 },
         { position: 3, question: "澜沧有哪些舒适口腔？", answer: "第三份完整原始回答。", mentionLevel: "supplementary", mentionLabel: "补充提及", targetPosition: 3 },
       ],
+      channelMaintenance: {
+        citedChannels: [{
+          domain: "m.jobui.com",
+          citationCount: 1,
+          access: "maintainable",
+          accessLabel: "可直接维护",
+          sourceTypes: ["招聘或企业主页"],
+          links: [{ title: "企业主页", url: "https://m.jobui.com/company/1" }],
+        }],
+        candidateChannels: [{ channel: "机构官网", content: "发布完整机构介绍" }],
+      },
       recommendationPlaybook: {
         diagnosis: { summary: "目标商家已进入首批推荐。", mentionedCount: 2, totalCount: 3, questions: [] },
         competitorReasons: [
@@ -81,6 +111,15 @@ describe("delivery report", () => {
     expect(screen.getByRole("heading", { name: "同行甲" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "同行乙" })).not.toBeInTheDocument();
     expect(screen.getByText("营业时间缺失")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "公开信息渠道维护清单" })).toBeVisible();
+    expect(screen.getByText("m.map.360.cn")).toBeVisible();
+    expect(screen.getByText("引用 2 次 · 检测回答引用来源")).toBeVisible();
+    expect(screen.getByText("需要认领或纠错")).toBeVisible();
+    expect(screen.getByText("m.jobui.com")).toBeVisible();
+    expect(screen.getByRole("link", { name: "企业主页" })).toHaveAttribute("href", "https://m.jobui.com/company/1");
+    expect(screen.getByText("机构官网")).toBeVisible();
+    expect(screen.getByText("发布完整机构介绍")).toBeVisible();
+    expect(screen.getByText(/不保证进入首批推荐/)).toBeVisible();
     expect(screen.getByRole("heading", { name: "补齐可核验服务事实" })).toBeVisible();
     expect(screen.getByText("0% → 67%")).toBeVisible();
     expect(screen.getByText("答案来自实测，不代表豆包官方排序规则。")).toBeVisible();
