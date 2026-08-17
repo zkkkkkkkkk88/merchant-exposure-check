@@ -12,8 +12,9 @@ LEVEL_RANK = {"none": 0, "supplementary": 1, "primary": 2}
 
 
 def _core(value: str) -> str:
+    value = re.sub(r"[（(][^）)]*[）)]", "", value)
     text = re.sub(r"[\s（）()·•,，。\-—_/]", "", value.casefold())
-    for token in ("澜沧拉祜族自治县", "澜沧县", "澜沧", "口腔科", "口腔诊所", "口腔门诊部", "口腔门诊", "口腔", "门诊部", "门诊", "诊所"):
+    for token in ("澜沧拉祜族自治县", "澜沧县", "澜沧", "普洱市", "普洱", "口腔医疗机构", "口腔科", "口腔诊所", "口腔门诊部", "口腔门诊", "口腔", "门诊部", "门诊", "诊所", "医院", "有限责任公司", "有限公司"):
         text = text.replace(token, "")
     return text
 
@@ -39,11 +40,15 @@ def _entries(answer: str | None) -> list[tuple[int, str, str]]:
     return entries
 
 
-def _target_position(result: MobileCheckResult, merchant_name: str) -> int | None:
-    for position, name, _ in _entries(result.answer_excerpt):
+def target_position_in_answer(answer: str | None, merchant_name: str) -> int | None:
+    for position, name, _ in _entries(answer):
         if _same_entity(name, merchant_name):
             return position
     return None
+
+
+def _target_position(result: MobileCheckResult, merchant_name: str) -> int | None:
+    return target_position_in_answer(result.answer_excerpt, merchant_name)
 
 
 def _concise_reason(description: str) -> str:
@@ -125,13 +130,18 @@ def _comparison(latest: MobileCheckRound, previous: MobileCheckRound | None) -> 
     }
 
 
-def _competitor_reasons(results: list[MobileCheckResult], sources: list[MobileRoundSource], exclude_public_oral: bool = False) -> list[dict]:
+def _competitor_reasons(
+    results: list[MobileCheckResult],
+    sources: list[MobileRoundSource],
+    merchant_name: str,
+    exclude_public_oral: bool = False,
+) -> list[dict]:
     appearances: list[dict] = []
     appearance_order = 0
     for result in results:
         question_position = result.validation_item.position
         for _, name, description in _entries(result.answer_excerpt):
-            if exclude_public_oral and _is_public_oral_entity(name):
+            if _same_entity(name, merchant_name) or (exclude_public_oral and _is_public_oral_entity(name)):
                 continue
             matched = next((item for item in appearances if _same_entity(item["name"], name)), None)
             if matched is None:
@@ -272,7 +282,12 @@ def build_recommendation_playbook(
     oral_scope = "口腔" in merchant.industry
     if oral_scope:
         sources = [source for source in sources if source.entity_name == merchant.name or not _is_public_oral_entity(source.entity_name)]
-    competitor_reasons = _competitor_reasons(results, sources, exclude_public_oral=oral_scope)
+    competitor_reasons = _competitor_reasons(
+        results,
+        sources,
+        merchant.name,
+        exclude_public_oral=oral_scope,
+    )
     return {
         "diagnosis": {"summary": summary, "mentionedCount": len(mentioned), "totalCount": len(results), "questions": questions},
         "competitorReasons": competitor_reasons,

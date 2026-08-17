@@ -12,7 +12,7 @@ import {
   getQuerySets,
 } from "@/lib/api";
 import { profileFieldLabel } from "@/lib/profile-field-labels";
-import { buildDeliveryReadiness } from "@/lib/delivery-readiness";
+import { buildDeliveryReadiness, deliveryVisibilityLevel } from "@/lib/delivery-readiness";
 
 const percent = (value: number) => `${Math.round(value * 100)}%`;
 
@@ -55,9 +55,15 @@ export default async function DeliveryReportPage({
     confirmedFactCount: confirmedFacts.length,
     approvedQuestionCount: selectedQueries.length,
     confirmedAnswerCount: metrics?.confirmedCount ?? 0,
+    mentionCount: metrics?.mentionCount ?? 0,
     primaryCount: metrics?.primaryCount ?? 0,
     platformAuditRecorded: Boolean(audit && audit.platforms.length > 0),
     comparableRetest: Boolean(playbook?.comparison),
+  });
+  const visibilityLevel = deliveryVisibilityLevel({
+    confirmedAnswerCount: metrics?.confirmedCount ?? 0,
+    mentionCount: metrics?.mentionCount ?? 0,
+    primaryCount: metrics?.primaryCount ?? 0,
   });
 
   return (
@@ -82,7 +88,7 @@ export default async function DeliveryReportPage({
           <header>
             <div>
               <p className="kicker">DELIVERY GATE</p>
-              <h2>{readiness.accepted ? "核心验收已通过" : "核心验收尚未通过"}</h2>
+              <h2>{readiness.accepted ? "核心检测已完成" : "核心检测尚未完成"}</h2>
             </div>
             <strong>{readiness.accepted ? "可交付" : `${readiness.blockingReasons.length} 项阻塞`}</strong>
           </header>
@@ -94,11 +100,12 @@ export default async function DeliveryReportPage({
               </li>
             ))}
           </ul>
-          {!readiness.accepted && <p>完成阻塞项后才能打印交付报告；辅助证据不会改变“至少推荐一次”的核心验收结论。</p>}
+          {!readiness.accepted && <p>完成 3 个独立对话并确认回答后，即可打印交付报告。</p>}
+          {readiness.accepted && !firstBatchAchieved && <p>首批推荐属于进阶成果，不影响本次检测报告交付。</p>}
         </section>
 
         <section className="report-conclusion" aria-label="交付结论">
-          <div><span>至少首批推荐一次</span><strong>{firstBatchAchieved ? "是" : "否"}</strong></div>
+          <div><span>可见性等级</span><strong>{visibilityLevel}</strong></div>
           <div><span>目标商家被提及</span><strong>{metrics ? `${metrics.mentionCount}/${metrics.confirmedCount}` : "暂无实测"}</strong></div>
           <div><span>首批推荐</span><strong>{metrics ? `${metrics.primaryCount}/${metrics.confirmedCount}` : "暂无实测"}</strong></div>
           <div><span>六步证据进度</span><strong>{journey ? `${journey.completed_count}/${journey.total_count}` : "暂无"}</strong></div>
@@ -122,12 +129,11 @@ export default async function DeliveryReportPage({
         </section>
 
         <section className="delivery-report-section">
-          <header><span>02</span><div><h2>3个独立对话原始结果</h2><p>保留上一轮问题和答案，方便回看豆包具体说了什么。</p></div></header>
-          <div className="report-answer-list">
+          <header><span>02</span><div><h2>3 个独立对话结果摘要</h2><p>正文只保留问题、提及状态和推荐位次，完整原话可在网页附录中核验。</p></div></header>
+          <div className="report-answer-list report-answer-summary-list">
             {(workspace?.latestRoundAnswers ?? []).length > 0 ? workspace?.latestRoundAnswers?.map((answer) => (
               <article key={answer.position}>
-                <header><strong>Q{answer.position} · {answer.question}</strong><span>{answer.mentionLabel}</span></header>
-                <p>{answer.answer || "本题没有保存答案文本。"}</p>
+                <header><strong>Q{answer.position} · {answer.question}</strong><span>{answer.mentionLabel}{answer.targetPosition ? ` · 第 ${answer.targetPosition} 位` : ""}</span></header>
               </article>
             )) : <p className="report-empty">暂无已确认的手机实测答案。</p>}
           </div>
@@ -169,6 +175,18 @@ export default async function DeliveryReportPage({
         <section className="delivery-report-section" id="retest-comparison">
           <header><span>06</span><div><h2>同题复测前后对比</h2><p>只有使用相同问题完成两轮实测，才显示趋势。</p></div></header>
           {playbook?.comparison ? <div className="report-comparison"><strong>{percent(playbook.comparison.mentionRateBefore)} → {percent(playbook.comparison.mentionRateAfter)}</strong><span>提及率</span><strong>{percent(playbook.comparison.primaryRateBefore)} → {percent(playbook.comparison.primaryRateAfter)}</strong><span>首批推荐率</span></div> : <p className="report-empty">尚未形成可比较的同题复测。</p>}
+        </section>
+
+        <section className="delivery-report-section report-answer-appendix" aria-label="原始回答附录">
+          <header><span>附</span><div><h2>原始回答附录</h2><p>仅供网页核验豆包原话，打印或另存为 PDF 时不包含本附录。</p></div></header>
+          <div className="report-answer-disclosures">
+            {(workspace?.latestRoundAnswers ?? []).length > 0 ? workspace?.latestRoundAnswers?.map((answer) => (
+              <details key={answer.position}>
+                <summary>Q{answer.position} · {answer.question} · {answer.mentionLabel}{answer.targetPosition ? ` · 第 ${answer.targetPosition} 位` : ""}</summary>
+                <p>{answer.answer || "本题没有保存答案文本。"}</p>
+              </details>
+            )) : <p className="report-empty">暂无已确认的手机实测答案。</p>}
+          </div>
         </section>
 
         <footer className="delivery-report-footer">

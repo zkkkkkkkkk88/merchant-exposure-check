@@ -83,6 +83,8 @@ describe("mobile Doubao workspace", () => {
     expect(screen.getByText("上一轮豆包完整回答")).toBeInTheDocument();
     expect(screen.getByText("上一轮豆包完整回答")).toBeVisible();
     expect(screen.getByText("补充提及 · 第 5 位")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "收起答案" }));
+    expect(screen.getByText("上一轮豆包完整回答")).not.toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "开始新一轮" }));
     expect(screen.getByLabelText("集中粘贴3份回答")).toBeInTheDocument();
   });

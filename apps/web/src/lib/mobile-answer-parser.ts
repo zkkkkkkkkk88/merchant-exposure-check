@@ -27,8 +27,9 @@ function splitBlocks(rawText: string, count: number): string[] {
 
 function entityCore(value: string): string {
   return value
-    .replace(/[\s（）()·]/g, "")
-    .replace(/(?:口腔科|口腔医疗机构|口腔门诊部|口腔门诊|门诊部|门诊|诊所|医院|口腔)$/u, "");
+    .replace(/[（(][^）)]*[）)]/gu, "")
+    .replace(/[\s（）()·•,，。\-—_/]/g, "")
+    .replace(/(?:澜沧拉祜族自治县|澜沧县|澜沧|普洱市|普洱|口腔医疗机构|口腔科|口腔诊所|口腔门诊部|口腔门诊|口腔|门诊部|门诊|诊所|医院|有限责任公司|有限公司)/gu, "");
 }
 
 function isSameEntity(candidate: string, merchantName: string): boolean {
@@ -41,7 +42,7 @@ function isSameEntity(candidate: string, merchantName: string): boolean {
 
 function extractListedEntities(answer: string): Array<{ name: string; index: number }> {
   const entities: Array<{ name: string; index: number }> = [];
-  const pattern = /^\s*(?:\d+\s*[.、．]|[-•])\s*([^：:\n]{2,45})\s*[：:]/gmu;
+  const pattern = /^\s*(?:\d+\s*[.、．]|[-•])\s*([^：:\n]{2,60}?)(?:\s*[：:].*)?\s*$/gmu;
   for (const match of answer.matchAll(pattern)) {
     const name = match[1].trim().replace(/[。；;，,]$/u, "");
     if (/(?:医院|口腔科|口腔|门诊|诊所)/u.test(name)) entities.push({ name, index: match.index ?? 0 });
@@ -80,7 +81,7 @@ export function parseMobileAnswers(rawText: string, items: MobileAnswerItem[], m
       itemId: item.id,
       mentionLevel: mentioned ? (targetPosition > 0 || explicitlySupplementary ? "supplementary" : "primary") : "none",
       competitors,
-      answerExcerpt: answer.slice(0, 500),
+      answerExcerpt: answer,
       needsReview: answer.length === 0,
     };
   });

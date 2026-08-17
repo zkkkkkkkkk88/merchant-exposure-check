@@ -119,6 +119,26 @@ def test_playbook_only_shows_private_clinics_repeated_across_answers(db_session:
     assert "上允金钟口腔诊所" not in str(competitors)
 
 
+def test_playbook_merges_parenthetical_aliases_and_excludes_target(db_session: Session) -> None:
+    merchant, round_record = seed_mobile_case(db_session)
+    ordered = sorted(round_record.results, key=lambda item: item.validation_item.position)
+    answers = [
+        "1. 澜沧王天佑口腔诊所（县城老牌，医保定点）：经营时间较长。\n2. 澜沧皓雅口腔门诊部：目标商家。",
+        "1. 澜沧王天佑口腔诊所（医保定点）：服务项目较全。\n2. 皓雅口腔门诊：目标商家。",
+        "1. 澜沧皓雅口腔门诊部：目标商家。\n2. 澜沧王天佑口腔（总店+华庭分店）：门店规模较大。",
+    ]
+    for result, answer in zip(ordered, answers, strict=True):
+        result.answer_excerpt = answer
+    db_session.commit()
+
+    competitors = MobileCheckService(db_session).get_workspace(merchant.id)["recommendationPlaybook"]["competitorReasons"]
+
+    assert len(competitors) == 1
+    assert competitors[0]["name"] == "澜沧王天佑口腔诊所（县城老牌，医保定点）"
+    assert competitors[0]["questionCount"] == 3
+    assert "皓雅" not in str(competitors)
+
+
 def test_competitor_reason_stops_before_the_next_clinic() -> None:
     reason = _concise_reason("营业时间稳定，适合基础项目。乡镇-上允金钟口腔诊所：上允镇经营。")
 

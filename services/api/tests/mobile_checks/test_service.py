@@ -220,6 +220,53 @@ def test_workspace_metrics_use_only_confirmed_question_results(db_session: Sessi
     ]
 
 
+def test_create_round_recomputes_mentions_from_full_numbered_answers(db_session: Session) -> None:
+    merchant = add_merchant(db_session)
+    merchant.name = "澜沧皓雅口腔门诊有限公司"
+    add_queries(db_session, merchant, 6)
+    validation_set = MobileCheckService(db_session).create_validation_set(merchant.id)
+    answers = [
+        "\n".join(["说明" * 260, "1. 甲口腔", "2. 乙口腔", "3. 丙口腔", "4. 丁口腔", "5. 戊口腔", "6. 皓雅口腔门诊"]),
+        "\n".join(["1. 甲口腔", "2. 乙口腔", "3. 丙口腔", "4. 普洱皓雅口腔门诊有限公司（皓雅口腔）"]),
+        "\n".join(["1. 甲口腔", "2. 乙口腔", "3. 皓雅口腔门诊"]),
+    ]
+    payload = MobileRoundCreate(
+        validation_set_id=validation_set.id,
+        raw_qa_text="\n\n".join(f"Q{index + 1}：{answer}" for index, answer in enumerate(answers)),
+        results=[
+            MobileResultCreate(
+                validation_item_id=item.id,
+                mention_level="none",
+                is_confirmed=True,
+                answer_excerpt=answer[:500],
+            )
+            for item, answer in zip(validation_set.items, answers, strict=True)
+        ],
+    )
+
+    created = MobileCheckService(db_session).create_round(merchant.id, payload)
+    assert created is not None
+    MobileCheckService(db_session).confirm_round(created.id, merchant.id)
+    workspace = MobileCheckService(db_session).get_workspace(merchant.id)
+
+    assert [result.answer_excerpt for result in created.results] == answers
+    assert [result.mention_level for result in created.results] == ["supplementary"] * 3
+    assert workspace["metrics"]["mentionCount"] == 3
+    assert workspace["metrics"]["mentionRate"] == 1.0
+    assert [answer["targetPosition"] for answer in workspace["latestRoundAnswers"]] == [6, 4, 3]
+    assert [answer["mentionLabel"] for answer in workspace["latestRoundAnswers"]] == ["补充提及"] * 3
+
+
+def test_mobile_result_accepts_a_complete_long_answer() -> None:
+    result = MobileResultCreate(
+        validation_item_id=uuid4(),
+        mention_level="none",
+        answer_excerpt="完整回答" * 1000,
+    )
+
+    assert len(result.answer_excerpt or "") == 4000
+
+
 def test_source_gap_matrix_uses_confirmed_mobile_sources_and_marks_target_gap(
     db_session: Session,
 ) -> None:

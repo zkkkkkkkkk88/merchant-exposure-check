@@ -374,6 +374,7 @@ tbody th { font-weight: 600; }
 .latest-round-answer-list header { align-items: start; display: flex; gap: 16px; justify-content: space-between; }
 .latest-round-answer-list header span { color: var(--accent); flex: none; font-size: 12px; }
 .latest-round-answer-list p { color: var(--muted); line-height: 1.75; margin: 10px 0 0; white-space: pre-wrap; }
+.latest-round-collapse { display: flex; justify-content: flex-end; margin-top: 14px; }
 .form-guidance { background: #fff4e8; border-radius: 10px; color: #8b3f28; margin: 0; padding: 12px 14px; }
 .mobile-entry label { display: grid; gap: 8px; font-weight: 600; }
 .mobile-entry input, .mobile-entry textarea, .mobile-entry select { border: 1px solid rgba(45, 38, 32, .18); border-radius: 10px; padding: 11px 12px; font: inherit; }
@@ -582,6 +583,11 @@ tbody th { font-weight: 600; }
 .report-answer-list article > header { align-items: start; display: flex; gap: 24px; justify-content: space-between; }
 .report-answer-list article > header span, .report-platform-list article > span, .report-frequency { color: var(--accent); font-size: 12px; }
 .report-answer-list article p, .report-platform-list article p { color: var(--muted); line-height: 1.75; margin: 12px 0 0; white-space: pre-wrap; }
+.report-answer-disclosures { display: grid; gap: 10px; }
+.report-answer-disclosures details { background: rgba(255, 255, 255, .48); border-left: 3px solid var(--accent); padding: 16px 18px; }
+.report-answer-disclosures summary { cursor: pointer; font-size: 13px; font-weight: 700; line-height: 1.6; }
+.report-answer-disclosures summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.report-answer-disclosures p { color: var(--muted); line-height: 1.75; margin: 16px 0 0; white-space: pre-wrap; }
 .report-card-grid { display: grid; gap: 16px; grid-template-columns: repeat(3, 1fr); }
 .report-card { background: rgba(255, 255, 255, .5); border: 1px solid var(--line); padding: 22px; }
 .report-card h3 { font-family: var(--serif); font-size: 21px; font-weight: 500; margin: 0 0 10px; }
@@ -620,7 +626,7 @@ tbody th { font-weight: 600; }
 
 @media print {
   html, body { background: #fff; }
-  .navigation-rail, .mobile-header, .mobile-navigation, .global-back, .journey-progress, .report-actions { display: none !important; }
+  .navigation-rail, .mobile-header, .mobile-navigation, .global-back, .journey-progress, .report-actions, .report-answer-appendix { display: none !important; }
   .app-content { margin: 0; }
   .delivery-report { max-width: none; padding: 0; }
   .delivery-report-section, .report-card, .report-answer-list article, .report-action-list > article { break-inside: avoid; }

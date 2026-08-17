@@ -1,3 +1,4 @@
+import re
 from uuid import UUID
 
 from sqlalchemy import select
@@ -13,7 +14,7 @@ from app.mobile_checks.models import (
     utc_now,
 )
 from app.mobile_checks.schemas import MobileRoundCreate
-from app.mobile_checks.playbook import LEVEL_LABELS, _target_position, build_recommendation_playbook
+from app.mobile_checks.playbook import LEVEL_LABELS, _target_position, build_recommendation_playbook, target_position_in_answer
 from app.queries.models import Query, QuerySet
 
 
@@ -111,9 +112,19 @@ class MobileCheckService:
         )
         merchant = self.session.get(Merchant, merchant_id)
         oral_scope = merchant is not None and "口腔" in merchant.industry
+        answers = self._split_answer_blocks(payload.raw_qa_text, len(validation_set.items))
+        item_positions = {item.id: item.position for item in validation_set.items}
         result_values = []
         for item in payload.results:
             values = item.model_dump()
+            position = item_positions[item.validation_item_id]
+            full_answer = answers[position - 1]
+            if full_answer:
+                values["answer_excerpt"] = full_answer
+            if merchant is not None:
+                target_position = target_position_in_answer(values["answer_excerpt"], merchant.name)
+                if target_position is not None:
+                    values["mention_level"] = "primary" if target_position == 1 else "supplementary"
             if oral_scope:
                 values["competitors"] = [name for name in values["competitors"] if not self._is_public_oral_entity(name)]
             result_values.append(values)
@@ -122,6 +133,28 @@ class MobileCheckService:
         self.session.add(record)
         self.session.commit()
         return record
+
+    @staticmethod
+    def _split_answer_blocks(raw_text: str, count: int) -> list[str]:
+        markers = list(re.finditer(
+            r"(?:^|\n)\s*(?:Q|问题)\s*([1-9]\d*)\s*[：:.、-]?\s*",
+            raw_text,
+            flags=re.IGNORECASE,
+        ))
+        if not markers:
+            separated = [part.strip() for part in re.split(
+                r"\n\s*(?:-{3,}|={3,}|【?回答\s*[1-9]\d*】?)\s*\n",
+                raw_text,
+                flags=re.IGNORECASE,
+            ) if part.strip()]
+            return [separated[index] if index < len(separated) else "" for index in range(count)]
+        blocks = [""] * count
+        for index, marker in enumerate(markers):
+            position = int(marker.group(1)) - 1
+            if 0 <= position < count:
+                end = markers[index + 1].start() if index + 1 < len(markers) else len(raw_text)
+                blocks[position] = raw_text[marker.end():end].strip()
+        return blocks
 
     def get_round(self, round_id: UUID, merchant_id: UUID) -> MobileCheckRound | None:
         return self.session.scalar(

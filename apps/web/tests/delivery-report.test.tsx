@@ -48,9 +48,13 @@ describe("delivery report", () => {
     });
     vi.mocked(getMobileWorkspace).mockResolvedValue({
       latestRoundId: "r1", sourceRoundId: "r1",
-      metrics: { confirmedCount: 3, mentionCount: 2, primaryCount: 1, categoryCoveredCount: 2, categoryTotalCount: 3, informationAccurateCount: 2, informationEvaluatedCount: 2, mentionRate: 2 / 3, primaryRate: 1 / 3, categoryCoverageRate: 2 / 3, informationAccuracyRate: 1, sourceCoverageRate: 0.5 },
+      metrics: { confirmedCount: 3, mentionCount: 3, primaryCount: 0, categoryCoveredCount: 2, categoryTotalCount: 3, informationAccurateCount: 2, informationEvaluatedCount: 3, mentionRate: 1, primaryRate: 0, categoryCoverageRate: 2 / 3, informationAccuracyRate: 2 / 3, sourceCoverageRate: 0.5 },
       entities: ["示例口腔", "同行甲", "同行乙"], sourceGaps: [],
-      latestRoundAnswers: [{ position: 1, question: "澜沧有哪些民营口腔？", answer: "推荐示例口腔和同行甲。", mentionLevel: "primary", mentionLabel: "首批推荐", targetPosition: 1 }],
+      latestRoundAnswers: [
+        { position: 1, question: "澜沧有哪些民营口腔？", answer: "第一份完整原始回答。", mentionLevel: "supplementary", mentionLabel: "补充提及", targetPosition: 6 },
+        { position: 2, question: "澜沧有哪些洁牙机构？", answer: "第二份完整原始回答。", mentionLevel: "supplementary", mentionLabel: "补充提及", targetPosition: 4 },
+        { position: 3, question: "澜沧有哪些舒适口腔？", answer: "第三份完整原始回答。", mentionLevel: "supplementary", mentionLabel: "补充提及", targetPosition: 3 },
+      ],
       recommendationPlaybook: {
         diagnosis: { summary: "目标商家已进入首批推荐。", mentionedCount: 2, totalCount: 3, questions: [] },
         competitorReasons: [
@@ -68,9 +72,12 @@ describe("delivery report", () => {
     render(await DeliveryReportPage({ searchParams: Promise.resolve({ merchant: "m1" }) }));
 
     expect(screen.getByRole("heading", { name: "手机版豆包商家可见性交付报告" })).toBeVisible();
-    expect(screen.getByText("至少首批推荐一次")).toBeVisible();
-    expect(screen.getByText("是", { selector: "strong" })).toBeVisible();
-    expect(screen.getByText("推荐示例口腔和同行甲。")).toBeVisible();
+    expect(screen.getByText("可见性等级")).toBeVisible();
+    expect(screen.getByText("稳定可见", { selector: "strong" })).toBeVisible();
+    expect(screen.getByText("补充提及 · 第 6 位")).toBeVisible();
+    expect(screen.getByText("第一份完整原始回答。")).not.toBeVisible();
+    fireEvent.click(screen.getByText(/Q1 · 澜沧有哪些民营口腔？ · 补充提及 · 第 6 位/));
+    expect(screen.getByText("第一份完整原始回答。")).toBeVisible();
     expect(screen.getByRole("heading", { name: "同行甲" })).toBeVisible();
     expect(screen.queryByRole("heading", { name: "同行乙" })).not.toBeInTheDocument();
     expect(screen.getByText("营业时间缺失")).toBeVisible();
@@ -81,7 +88,7 @@ describe("delivery report", () => {
     expect(screen.getByText("省份 / 城市")).toBeVisible();
     expect(screen.queryByText("contact.phone")).not.toBeInTheDocument();
     expect(screen.queryByText("location.city")).not.toBeInTheDocument();
-    expect(screen.getByText("核心验收已通过")).toBeVisible();
+    expect(screen.getByText("核心检测已完成")).toBeVisible();
     expect(screen.getByRole("button", { name: "打印 / 另存为 PDF" })).toBeEnabled();
   });
 

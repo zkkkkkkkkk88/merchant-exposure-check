@@ -2,6 +2,7 @@ export interface DeliveryReadinessInput {
   confirmedFactCount: number;
   approvedQuestionCount: number;
   confirmedAnswerCount: number;
+  mentionCount: number;
   primaryCount: number;
   platformAuditRecorded: boolean;
   comparableRetest: boolean;
@@ -46,9 +47,9 @@ export function buildDeliveryReadiness(input: DeliveryReadinessInput): DeliveryR
     },
     {
       key: "primary",
-      label: "目标商家至少获得1次首批推荐",
+      label: "进阶目标：至少1次首批推荐",
       complete: input.primaryCount >= 1,
-      blocking: true,
+      blocking: false,
       detail: `${input.primaryCount} 次首批推荐`,
     },
     {
@@ -70,8 +71,13 @@ export function buildDeliveryReadiness(input: DeliveryReadinessInput): DeliveryR
   if (input.confirmedAnswerCount !== 3) {
     blockingReasons.push("手机实测需要确认完整的3道回答");
   }
-  if (input.primaryCount < 1) {
-    blockingReasons.push("目标商家尚未获得至少1次首批推荐");
-  }
   return { accepted: blockingReasons.length === 0, items, blockingReasons };
+}
+
+export function deliveryVisibilityLevel(input: Pick<DeliveryReadinessInput, "confirmedAnswerCount" | "mentionCount" | "primaryCount">): string {
+  if (input.confirmedAnswerCount !== 3) return "等待完整实测";
+  if (input.primaryCount >= 1) return "强势可见";
+  if (input.mentionCount >= 2) return "稳定可见";
+  if (input.mentionCount === 1) return "初步可见";
+  return "尚未建立可见性";
 }

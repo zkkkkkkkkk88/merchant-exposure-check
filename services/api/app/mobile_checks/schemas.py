@@ -33,7 +33,7 @@ class MobileResultCreate(BaseModel):
     competitors: list[str] = Field(default_factory=list)
     information_accurate: bool | None = None
     is_confirmed: bool = False
-    answer_excerpt: str | None = Field(default=None, max_length=3000)
+    answer_excerpt: str | None = Field(default=None, max_length=100_000)
 
 
 class MobileSourceCreate(BaseModel):

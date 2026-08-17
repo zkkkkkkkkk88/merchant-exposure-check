@@ -90,7 +90,7 @@ class RestaurantRulePack:
                         ["location.city", "category.precise", "product.list"],
                     )
 
-        price = self._text(profile.facts, "price.display")
+        price = self._usable_price(self._text(profile.facts, "price.display"))
         if price:
             for text in (
                 f"{city}{price}的{category}有哪些？",
@@ -145,6 +145,8 @@ class RestaurantRulePack:
         for field_key, label in verification_labels.items():
             if field_key not in profile.facts:
                 continue
+            if field_key == "price.display" and price is None:
+                continue
             add(
                 f"{profile.merchant_name}{label}？有哪些公开来源可以证明？",
                 "need" if field_key.startswith(("service.", "need.")) else "geo" if field_key.startswith("location.") else "price",
@@ -163,23 +165,23 @@ class RestaurantRulePack:
 
         if len(drafts) < count:
             wording = [
-                "推荐几家",
-                "有哪些值得选择",
-                "哪几家比较合适",
-                "有哪些可供比较",
-                "有哪些选择",
-                "有哪些口碑不错",
-                "哪些值得优先考虑",
-                "第一次去可以选哪些",
-                "有哪些评价较稳定",
-                "本地人常选哪些",
+                "推荐几家{category}",
+                "有哪些值得选择的{category}",
+                "哪几家{category}比较合适",
+                "有哪些可供比较的{category}",
+                "有哪些{category}可以选择",
+                "有哪些口碑不错的{category}",
+                "哪些{category}值得优先考虑",
+                "第一次去可以选哪些{category}",
+                "有哪些评价较稳定的{category}",
+                "本地人常选哪些{category}",
             ]
             index = 0
             while len(drafts) < count:
                 scope = scopes[index % len(scopes)]
                 phrase = wording[(index // len(scopes)) % len(wording)]
                 add(
-                    f"{scope}{phrase}的{category}？",
+                    f"{scope}{phrase.format(category=category)}？",
                     "category",
                     "补充精准品类的自然语言推荐表达",
                     ["location.city", "category.precise"],
@@ -206,3 +208,9 @@ class RestaurantRulePack:
     def _text(facts: dict[str, object], key: str) -> str | None:
         value = facts.get(key)
         return value.strip() if isinstance(value, str) and value.strip() else None
+
+    @staticmethod
+    def _usable_price(value: str | None) -> str | None:
+        if value is None or not any(character.isdigit() for character in value):
+            return None
+        return value if any(marker in value for marker in ("元", "¥", "￥")) else None
