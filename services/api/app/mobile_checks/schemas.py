@@ -129,3 +129,9 @@ class MobileWorkspaceRead(BaseModel):
     sourceGaps: list[dict]
     latestRoundAnswers: list[dict] = Field(default_factory=list)
     recommendationPlaybook: dict | None = None
+    channelMaintenance: dict = Field(
+        default_factory=lambda: {
+            "citedChannels": [],
+            "candidateChannels": [],
+        }
+    )

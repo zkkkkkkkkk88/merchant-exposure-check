@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.merchants.models import Merchant
+from app.mobile_checks.channel_maintenance import build_channel_maintenance
 from app.mobile_checks.models import (
     MobileCheckResult,
     MobileCheckRound,
@@ -303,7 +304,19 @@ class MobileCheckService:
             raise LookupError("merchant not found")
         latest = self._latest_confirmed_round(merchant_id)
         if latest is None:
-            return {"latestRoundId": None, "sourceRoundId": None, "metrics": None, "entities": [merchant.name], "sourceGaps": [], "latestRoundAnswers": [], "recommendationPlaybook": None}
+            return {
+                "latestRoundId": None,
+                "sourceRoundId": None,
+                "metrics": None,
+                "entities": [merchant.name],
+                "sourceGaps": [],
+                "latestRoundAnswers": [],
+                "recommendationPlaybook": None,
+                "channelMaintenance": {
+                    "citedChannels": [],
+                    "candidateChannels": [],
+                },
+            }
         confirmed_results = [result for result in latest.results if result.is_confirmed]
         mentioned = [result for result in confirmed_results if result.mention_level != "none"]
         primary = [result for result in confirmed_results if result.mention_level == "primary"]
@@ -329,6 +342,10 @@ class MobileCheckService:
             latest,
             self._previous_confirmed_round(latest),
             [source for source in confirmed_sources if source in peer_sources],
+        )
+        channel_maintenance = build_channel_maintenance(
+            confirmed_sources,
+            playbook.get("actions", []),
         )
         latest_round_answers = [{
             "position": result.validation_item.position,
@@ -359,4 +376,5 @@ class MobileCheckService:
             "sourceGaps": rows,
             "latestRoundAnswers": latest_round_answers,
             "recommendationPlaybook": playbook,
+            "channelMaintenance": channel_maintenance,
         }

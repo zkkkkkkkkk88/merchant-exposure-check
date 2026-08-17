@@ -265,6 +265,17 @@ export interface MobileWorkspaceData {
     };
     disclaimer: string;
   };
+  channelMaintenance?: {
+    citedChannels: Array<{
+      domain: string;
+      citationCount: number;
+      access: "maintainable" | "correctable" | "reference";
+      accessLabel: string;
+      sourceTypes: string[];
+      links: Array<{ title: string; url: string }>;
+    }>;
+    candidateChannels: Array<{ channel: string; content: string }>;
+  };
 }
 
 export type PlatformAuditStatus = "complete" | "incomplete" | "conflict" | "not_found" | "needs_review";

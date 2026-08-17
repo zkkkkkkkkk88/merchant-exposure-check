@@ -279,6 +279,8 @@ def test_source_gap_matrix_uses_confirmed_mobile_sources_and_marks_target_gap(
     db_session.add(MobileCheckResult(round_id=round_record.id, validation_item_id=validation_set.items[0].id, mention_level="none", competitors=["王天佑口腔", "无来源竞品"], is_confirmed=True))
     db_session.add_all([
         MobileRoundSource(round_id=round_record.id, title="舒适口腔工商页", source_type="registry", entity_name=merchant.name, facts=["地址"], evidence_kind="official", access_status="correctable", is_confirmed=True),
+        MobileRoundSource(round_id=round_record.id, title="地图门店", url="https://m.map.360.cn/store/1", domain="m.map.360.cn", source_type="profile", entity_name=merchant.name, facts=["地址"], evidence_kind="third_party", access_status="correctable", is_confirmed=True),
+        MobileRoundSource(round_id=round_record.id, title="地图介绍", url="https://m.map.360.cn/store/2", domain="m.map.360.cn", source_type="profile", entity_name=merchant.name, facts=["项目"], evidence_kind="third_party", access_status="reference", is_confirmed=True),
         MobileRoundSource(round_id=round_record.id, title="王天佑招聘页", url="https://jobs.example/wty", domain="jobs.example", source_type="recruitment", entity_name="王天佑口腔", facts=["CT", "独立诊室"], evidence_kind="self_reported", access_status="maintainable", is_confirmed=True),
         MobileRoundSource(round_id=round_record.id, title="未确认竞品页", source_type="douyin", entity_name="光雅口腔", facts=["口扫"], evidence_kind="self_reported", access_status="unknown", is_confirmed=False),
     ])
@@ -296,6 +298,34 @@ def test_source_gap_matrix_uses_confirmed_mobile_sources_and_marks_target_gap(
     }
     equipment = next(row for row in workspace["sourceGaps"] if row["key"] == "equipment")
     assert equipment["cells"]["王天佑口腔"]["evidence"] == ["王天佑招聘页：CT、独立诊室"]
+    assert workspace["channelMaintenance"]["citedChannels"][0] == {
+        "domain": "m.map.360.cn",
+        "citationCount": 2,
+        "access": "correctable",
+        "accessLabel": "需要认领或纠错",
+        "sourceTypes": ["机构或门店主页"],
+        "links": [
+            {"title": "地图门店", "url": "https://m.map.360.cn/store/1"},
+            {"title": "地图介绍", "url": "https://m.map.360.cn/store/2"},
+        ],
+    }
+    assert workspace["channelMaintenance"]["candidateChannels"][0] == {
+        "channel": "微信公众号文章或机构官网介绍页",
+        "content": "完整发布医生、资质、消毒、就诊流程和经营信息，并附可核验材料",
+    }
+
+
+def test_workspace_without_a_round_has_empty_channel_maintenance(
+    db_session: Session,
+) -> None:
+    merchant = add_merchant(db_session)
+
+    workspace = MobileCheckService(db_session).get_workspace(merchant.id)
+
+    assert workspace["channelMaintenance"] == {
+        "citedChannels": [],
+        "candidateChannels": [],
+    }
 
 
 def test_source_gap_stays_empty_until_sources_are_provided(db_session: Session) -> None:
