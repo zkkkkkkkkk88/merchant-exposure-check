@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
@@ -121,6 +121,10 @@ TABLE_MODELS = {
     "merchant_profile_facts": MerchantProfileFact,
     "merchant_local_contexts": MerchantLocalContext,
 }
+POSTGRESQL_TARGET_TABLE_LOCK = (
+    "LOCK TABLE merchants, merchant_sources, merchant_profile_facts, merchant_local_contexts "
+    "IN SHARE ROW EXCLUSIVE MODE"
+)
 
 
 def parse_uuid(value: str) -> UUID:
@@ -136,24 +140,28 @@ def import_package(
     engine: Engine, package: MerchantBasicsPackage, *, dry_run: bool = False
 ) -> dict[str, int]:
     """Import one validated merchant-basics package into an empty target."""
-    _require_empty_target(engine)
-    if dry_run:
-        return dict(package.counts)
-
     with Session(engine) as session:
         with session.begin():
+            _lock_postgresql_target_tables(session)
+            _require_empty_target(session)
+            if dry_run:
+                return dict(package.counts)
             for table in TABLE_ORDER:
                 session.add_all(_build_models(table, package.tables[table]))
             session.flush()
     return dict(package.counts)
 
 
-def _require_empty_target(engine: Engine) -> None:
-    with engine.connect() as connection:
-        for table in TABLE_ORDER:
-            count = connection.scalar(select(func.count()).select_from(TABLE_MODELS[table]))
-            if count:
-                raise TargetNotEmptyError(f"target table {table} is not empty")
+def _lock_postgresql_target_tables(session: Session) -> None:
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(text(POSTGRESQL_TARGET_TABLE_LOCK))
+
+
+def _require_empty_target(session: Session) -> None:
+    for table in TABLE_ORDER:
+        count = session.scalar(select(func.count()).select_from(TABLE_MODELS[table]))
+        if count:
+            raise TargetNotEmptyError(f"target table {table} is not empty")
 
 
 def _build_models(table: str, rows: list[dict[str, object]]) -> list[object]:

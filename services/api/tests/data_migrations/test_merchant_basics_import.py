@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, event, func, select
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.pool import StaticPool
 
+import app.data_migrations.merchant_basics as merchant_basics
 from app.data_migrations.merchant_basics import (
     EXPECTED_COUNTS,
     MerchantBasicsPackage,
@@ -167,6 +170,87 @@ def test_import_package_inserts_the_complete_validated_package(
     assert count_rows(engine) == EXPECTED_COUNTS
 
 
+def test_import_package_checks_the_target_in_the_same_transaction_as_its_inserts(
+    engine: Engine, package: MerchantBasicsPackage
+) -> None:
+    statements: list[tuple[int, str]] = []
+
+    def record_statement(
+        connection, cursor, statement, parameters, context, executemany
+    ) -> None:
+        if statement.startswith("SELECT count") or statement.startswith("INSERT INTO"):
+            statements.append((id(connection), statement))
+
+    event.listen(engine, "before_cursor_execute", record_statement)
+    try:
+        import_package(engine, package)
+    finally:
+        event.remove(engine, "before_cursor_execute", record_statement)
+
+    count_connection_ids = {
+        connection_id for connection_id, statement in statements if statement.startswith("SELECT count")
+    }
+    insert_connection_ids = {
+        connection_id for connection_id, statement in statements if statement.startswith("INSERT INTO")
+    }
+    assert count_connection_ids == insert_connection_ids
+    assert len(count_connection_ids) == 1
+
+
+def test_import_package_locks_postgresql_target_tables_before_counting(
+    monkeypatch: pytest.MonkeyPatch, package: MerchantBasicsPackage
+) -> None:
+    events: list[tuple[str, str]] = []
+
+    class RecordingConnection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback) -> None:
+            return None
+
+        def scalar(self, statement):
+            events.append(("count", str(statement)))
+            return 0
+
+    class RecordingEngine:
+        def connect(self) -> RecordingConnection:
+            return RecordingConnection()
+
+    class RecordingPostgresSession:
+        def __init__(self, engine) -> None:
+            self.engine = engine
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback) -> None:
+            return None
+
+        def begin(self):
+            return self
+
+        def get_bind(self):
+            return SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+        def execute(self, statement) -> None:
+            events.append(("lock", str(statement)))
+
+        def scalar(self, statement):
+            events.append(("count", str(statement)))
+            return 0
+
+    monkeypatch.setattr(merchant_basics, "Session", RecordingPostgresSession)
+
+    assert import_package(RecordingEngine(), package, dry_run=True) == EXPECTED_COUNTS
+    assert events[0] == (
+        "lock",
+        "LOCK TABLE merchants, merchant_sources, merchant_profile_facts, "
+        "merchant_local_contexts IN SHARE ROW EXCLUSIVE MODE",
+    )
+    assert [event_name for event_name, _ in events[1:]] == ["count"] * 4
+
+
 def test_import_package_refuses_a_non_empty_target_without_changing_it(
     engine: Engine, package: MerchantBasicsPackage
 ) -> None:
@@ -210,7 +294,7 @@ def test_import_package_rolls_back_every_table_when_profile_fact_uniqueness_fail
         tables=invalid_tables,
     )
 
-    with pytest.raises(Exception, match="UNIQUE constraint failed"):
+    with pytest.raises(IntegrityError, match="UNIQUE constraint failed"):
         import_package(engine, duplicate_fact_package)
 
     assert count_rows(engine) == {table: 0 for table in EXPECTED_COUNTS}
