@@ -1,5 +1,5 @@
 :80 {
-    basic_auth {
+    basic_auth argon2id {
         {$AUTH_USERNAME} {$AUTH_PASSWORD_HASH}
     }
 
