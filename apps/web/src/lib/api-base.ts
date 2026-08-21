@@ -1,7 +1,4 @@
-type ApiEnvironment = {
-  API_BASE_URL?: string;
-  NEXT_PUBLIC_API_BASE_URL?: string;
-};
+type ApiEnvironment = Record<string, string | undefined>;
 
 export function resolveServerApiBaseUrl(env: ApiEnvironment = {}): string {
   return env.API_BASE_URL
