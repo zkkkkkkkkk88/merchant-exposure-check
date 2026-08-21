@@ -262,3 +262,14 @@ def test_validate_package_rejects_unapproved_counts(exported_payload: dict[str, 
 
     with pytest.raises(ValueError, match="counts"):
         validate_package(payload)
+
+
+def test_export_rejects_malformed_sqlite_boolean_value(tmp_path: Path) -> None:
+    source_path = tmp_path / "source.db"
+    package_path = tmp_path / "merchant-basics.json"
+    create_source_database(source_path)
+    with sqlite3.connect(source_path) as connection:
+        connection.execute("UPDATE merchant_sources SET is_verified = 2")
+
+    with pytest.raises(ValueError, match="is_verified.*0 or 1"):
+        export_sqlite_package(source_path, package_path)

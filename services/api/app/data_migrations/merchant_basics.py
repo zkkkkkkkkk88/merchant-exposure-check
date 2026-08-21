@@ -159,7 +159,7 @@ def _read_table(connection: sqlite3.Connection, table: str) -> list[dict[str, ob
         for column in JSON_COLUMNS.get(table, set()):
             row[column] = json.loads(row[column])
         for column in BOOLEAN_COLUMNS.get(table, set()):
-            row[column] = bool(row[column])
+            row[column] = _decode_sqlite_boolean(row[column], f"{table}.{column}")
         rows.append(row)
     return rows
 
@@ -263,6 +263,14 @@ def _validate_json_column(table: str, column: str, value: object) -> None:
         return
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError(f"{table}.{column} must be a JSON array of strings")
+
+
+def _decode_sqlite_boolean(value: object, name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if type(value) is int and value in {0, 1}:
+        return bool(value)
+    raise ValueError(f"{name} must be SQLite 0 or 1 (or a boolean)")
 
 
 def _is_json_value(value: object) -> bool:
