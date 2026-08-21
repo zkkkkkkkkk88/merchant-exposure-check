@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -17,6 +20,7 @@ from scripts import export_merchant_basics, import_merchant_basics
 MERCHANT_ONE = "11111111-1111-4111-8111-111111111111"
 MERCHANT_TWO = "22222222-2222-4222-8222-222222222222"
 TIMESTAMP = "2026-08-21T12:34:56+00:00"
+WORKTREE_ROOT = Path(__file__).parents[4]
 
 
 @pytest.fixture(autouse=True)
@@ -108,6 +112,33 @@ def test_export_cli_writes_exact_merchant_basics_counts(tmp_path: Path, monkeypa
         "EXPORT OK merchants=2 merchant_sources=1 merchant_profile_facts=13 "
         "merchant_local_contexts=2"
     )
+
+
+def test_export_cli_runs_from_the_worktree_root_with_pythonpath(tmp_path: Path) -> None:
+    source = tmp_path / "source.db"
+    destination = tmp_path / "merchant-basics.json"
+    create_source_database(source)
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "services/api/scripts/export_merchant_basics.py",
+            str(source),
+            str(destination),
+        ],
+        cwd=WORKTREE_ROOT,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "PYTHONPATH": str(WORKTREE_ROOT / "services" / "api")},
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == (
+        "EXPORT OK merchants=2 merchant_sources=1 merchant_profile_facts=13 "
+        "merchant_local_contexts=2"
+    )
+    assert destination.is_file()
 
 
 def test_import_cli_dry_run_validates_the_package_without_writing(

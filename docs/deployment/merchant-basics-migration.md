@@ -16,7 +16,12 @@ source and save its SHA-256 digest:
 
 ```powershell
 New-Item -ItemType Directory -Force '.runtime' | Out-Null
+$env:PYTHONPATH = (Resolve-Path 'services/api').Path
 python services/api/scripts/export_merchant_basics.py '..\..\services\api\merchant-exposure.db' '.runtime\merchant-basics.json'
+if ($LASTEXITCODE -ne 0) {
+  Remove-Item Env:PYTHONPATH
+  throw 'Merchant-basics export failed.'
+}
 (Get-FileHash '.runtime\merchant-basics.json' -Algorithm SHA256).Hash.ToLower() | Set-Content '.runtime\merchant-basics.sha256'
 ```
 
@@ -24,7 +29,6 @@ The export command must print exactly the approved four counts. Validate the pac
 against a disposable empty local target before upload:
 
 ```powershell
-$env:PYTHONPATH = (Resolve-Path 'services/api').Path
 $env:DATABASE_URL = 'sqlite+pysqlite:///./.runtime/empty-target.db'
 & '.runtime\api-test-venv\Scripts\python.exe' -c "from sqlalchemy import create_engine; from app.db.base import Base; import app.merchants.models; Base.metadata.create_all(create_engine('sqlite+pysqlite:///./.runtime/empty-target.db'))"
 & '.runtime\api-test-venv\Scripts\python.exe' services/api/scripts/import_merchant_basics.py '.runtime\merchant-basics.json' --dry-run
