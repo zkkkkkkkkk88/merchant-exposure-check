@@ -14,4 +14,5 @@ playwright-report/
 *.db
 *.log
 services/api/data/
+deploy/.env.production
 
