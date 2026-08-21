@@ -233,6 +233,8 @@ def _read_table(connection: sqlite3.Connection, table: str) -> list[dict[str, ob
             row[column] = json.loads(row[column])
         for column in BOOLEAN_COLUMNS.get(table, set()):
             row[column] = _decode_sqlite_boolean(row[column], f"{table}.{column}")
+        for column in TIMESTAMP_COLUMNS[table]:
+            row[column] = _normalize_sqlite_timestamp(row[column], f"{table}.{column}")
         rows.append(row)
     return rows
 
@@ -344,6 +346,18 @@ def _decode_sqlite_boolean(value: object, name: str) -> bool:
     if type(value) is int and value in {0, 1}:
         return bool(value)
     raise ValueError(f"{name} must be SQLite 0 or 1 (or a boolean)")
+
+
+def _normalize_sqlite_timestamp(value: object, name: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{name} must be an ISO timestamp")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise ValueError(f"{name} must be an ISO timestamp") from error
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC).isoformat()
+    return value
 
 
 def _is_json_value(value: object) -> bool:

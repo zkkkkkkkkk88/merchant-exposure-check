@@ -273,3 +273,54 @@ def test_export_rejects_malformed_sqlite_boolean_value(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="is_verified.*0 or 1"):
         export_sqlite_package(source_path, package_path)
+
+
+def test_export_normalizes_naive_sqlite_timestamps_without_writing_source(tmp_path: Path) -> None:
+    source_path = tmp_path / "source.db"
+    package_path = tmp_path / "merchant-basics.json"
+    naive_timestamp = "2026-08-21T12:34:56"
+    create_source_database(source_path)
+    with sqlite3.connect(source_path) as connection:
+        for table in ("merchants", "merchant_profile_facts", "merchant_local_contexts"):
+            connection.execute(
+                f"UPDATE {table} SET created_at = ?, updated_at = ?",
+                (naive_timestamp, naive_timestamp),
+            )
+        connection.execute(
+            "UPDATE merchant_sources SET created_at = ?",
+            (naive_timestamp,),
+        )
+
+    export_sqlite_package(source_path, package_path)
+
+    payload = json.loads(package_path.read_text(encoding="utf-8"))
+    assert payload["tables"]["merchants"][0]["created_at"] == "2026-08-21T12:34:56+00:00"
+    assert payload["tables"]["merchant_sources"][0]["created_at"] == "2026-08-21T12:34:56+00:00"
+    with sqlite3.connect(source_path) as connection:
+        source_value = connection.execute("SELECT created_at FROM merchants LIMIT 1").fetchone()[0]
+    assert source_value == naive_timestamp
+
+
+def test_export_preserves_aware_sqlite_timestamp_offsets(tmp_path: Path) -> None:
+    source_path = tmp_path / "source.db"
+    package_path = tmp_path / "merchant-basics.json"
+    aware_timestamp = "2026-08-21T20:34:56+08:00"
+    create_source_database(source_path)
+    with sqlite3.connect(source_path) as connection:
+        connection.execute("UPDATE merchants SET created_at = ?", (aware_timestamp,))
+
+    export_sqlite_package(source_path, package_path)
+
+    payload = json.loads(package_path.read_text(encoding="utf-8"))
+    assert payload["tables"]["merchants"][0]["created_at"] == aware_timestamp
+
+
+def test_export_rejects_malformed_sqlite_timestamp(tmp_path: Path) -> None:
+    source_path = tmp_path / "source.db"
+    package_path = tmp_path / "merchant-basics.json"
+    create_source_database(source_path)
+    with sqlite3.connect(source_path) as connection:
+        connection.execute("UPDATE merchants SET created_at = 'not-a-timestamp'")
+
+    with pytest.raises(ValueError, match="merchants.created_at.*ISO timestamp"):
+        export_sqlite_package(source_path, package_path)
