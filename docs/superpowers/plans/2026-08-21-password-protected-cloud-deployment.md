@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-08-21-password-protected-cloud-deployment-design.md`
 
+**Execution amendment (approved 2026-08-21):** The local Windows machine does not have Docker and the user chose not to install Docker Desktop. Source-text-only Docker/Caddy tests are omitted; real image builds, Compose resolution, authentication, routing, and persistence checks run on the Tencent Cloud server before completion.
+
 ## Global Constraints
 
 - Target host is Ubuntu 24.04, 2 CPU, 2 GB RAM, 40 GB SSD, with approximately 2 GB Swap already enabled.
