@@ -6,7 +6,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 from uuid import UUID, uuid4
+
+from sqlalchemy import func, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
+
+from app.merchants.models import Merchant, MerchantLocalContext, MerchantProfileFact, MerchantSource
 
 TABLE_ORDER = (
     "merchants",
@@ -102,6 +109,64 @@ class MerchantBasicsPackage:
     exported_at: str
     counts: dict[str, int]
     tables: dict[str, list[dict[str, object]]]
+
+
+class TargetNotEmptyError(ValueError):
+    """Raised when a migration target already contains approved-table rows."""
+
+
+TABLE_MODELS = {
+    "merchants": Merchant,
+    "merchant_sources": MerchantSource,
+    "merchant_profile_facts": MerchantProfileFact,
+    "merchant_local_contexts": MerchantLocalContext,
+}
+
+
+def parse_uuid(value: str) -> UUID:
+    return UUID(value)
+
+
+def parse_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def import_package(
+    engine: Engine, package: MerchantBasicsPackage, *, dry_run: bool = False
+) -> dict[str, int]:
+    """Import one validated merchant-basics package into an empty target."""
+    _require_empty_target(engine)
+    if dry_run:
+        return dict(package.counts)
+
+    with Session(engine) as session:
+        with session.begin():
+            for table in TABLE_ORDER:
+                session.add_all(_build_models(table, package.tables[table]))
+            session.flush()
+    return dict(package.counts)
+
+
+def _require_empty_target(engine: Engine) -> None:
+    with engine.connect() as connection:
+        for table in TABLE_ORDER:
+            count = connection.scalar(select(func.count()).select_from(TABLE_MODELS[table]))
+            if count:
+                raise TargetNotEmptyError(f"target table {table} is not empty")
+
+
+def _build_models(table: str, rows: list[dict[str, object]]) -> list[object]:
+    model = TABLE_MODELS[table]
+    models: list[object] = []
+    for row in rows:
+        converted = dict(row)
+        for column in {"id", "merchant_id"} & converted.keys():
+            converted[column] = parse_uuid(cast(str, converted[column]))
+        for column in TIMESTAMP_COLUMNS[table]:
+            converted[column] = parse_datetime(cast(str, converted[column]))
+        models.append(model(**converted))
+    return models
 
 
 def export_sqlite_package(source: Path, destination: Path) -> dict[str, int]:
