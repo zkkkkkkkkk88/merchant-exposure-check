@@ -2,10 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { discoverMobileSources, selectMobileValidationSet } from "@/lib/api";
+import { SERVER_API_BASE_URL } from "@/lib/server-api-base";
 import type { MobileSourceDiscoveryData, MobileSourceDiscoveryPayload } from "@/lib/contracts";
 import { mergeConfirmedSources } from "@/lib/mobile-source-discovery";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const API_BASE_URL = SERVER_API_BASE_URL;
 
 export async function createMobileValidationSet(formData: FormData): Promise<void> {
   const merchantId = String(formData.get("merchantId") ?? "");

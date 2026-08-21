@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { resolvePublicApiBaseUrl } from "@/lib/api-base";
 
 type RuntimeStatus = {
   status: "ok" | "degraded";
@@ -10,7 +11,9 @@ type RuntimeStatus = {
   integrations: { doubao: boolean; amap: boolean; tencent_map: boolean };
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const API_BASE_URL = resolvePublicApiBaseUrl(
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+);
 
 export function ServiceStatus({ compact = false }: { compact?: boolean }) {
   const [status, setStatus] = useState<RuntimeStatus | null>(null);
