@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { getJourneyProgress } from "@/lib/api";
+import { getJourneyProgressAction } from "@/app/server-actions";
 import type { JourneyProgressData } from "@/lib/contracts";
 
 type JourneyKey = JourneyProgressData["steps"][number]["key"];
@@ -35,10 +35,7 @@ export function JourneyProgress({ merchantId }: { merchantId: string }) {
 
   useEffect(() => {
     let active = true;
-    if (typeof getJourneyProgress !== "function") return () => {
-      active = false;
-    };
-    getJourneyProgress(merchantId)
+    getJourneyProgressAction(merchantId)
       .then((data) => {
         if (active) setProgress(data);
       })

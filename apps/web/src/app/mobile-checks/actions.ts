@@ -2,19 +2,22 @@
 
 import { redirect } from "next/navigation";
 import { discoverMobileSources, selectMobileValidationSet } from "@/lib/api";
+import { requireServerAdmin, trustedApiHeaders } from "@/lib/server-access";
 import type { MobileSourceDiscoveryData, MobileSourceDiscoveryPayload } from "@/lib/contracts";
 import { mergeConfirmedSources } from "@/lib/mobile-source-discovery";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 
 export async function createMobileValidationSet(formData: FormData): Promise<void> {
+  await requireServerAdmin();
   const merchantId = String(formData.get("merchantId") ?? "");
-  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-validation-sets`, { method: "POST" });
+  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-validation-sets`, { method: "POST", headers: await trustedApiHeaders() });
   if (!response.ok) throw new Error("创建手机验证题集失败，请先审核并启用问题");
   redirect(`/mobile-checks?merchant=${encodeURIComponent(merchantId)}`);
 }
 
 export async function selectMobileValidationQuestions(formData: FormData): Promise<void> {
+  await requireServerAdmin();
   const merchantId = String(formData.get("merchantId") ?? "");
   await selectMobileValidationSet(merchantId, formData.getAll("queryIds").map(String));
   redirect(`/mobile-checks?merchant=${encodeURIComponent(merchantId)}`);
@@ -24,10 +27,12 @@ export async function discoverMobileSourcesAction(input: {
   merchantId: string;
   payload: MobileSourceDiscoveryPayload;
 }): Promise<MobileSourceDiscoveryData> {
+  await requireServerAdmin();
   return discoverMobileSources(input.merchantId, input.payload);
 }
 
 export async function saveMobileRound(formData: FormData): Promise<void> {
+  await requireServerAdmin();
   const merchantId = String(formData.get("merchantId") ?? "");
   const validationSetId = String(formData.get("validationSetId") ?? "");
   const itemIds = String(formData.get("itemIds") ?? "").split(",").filter(Boolean);
@@ -37,10 +42,10 @@ export async function saveMobileRound(formData: FormData): Promise<void> {
     String(formData.get("manualSources") ?? ""),
   );
   const inherited = formData.get("inheritSources") === "on" ? String(formData.get("sourceRoundId") ?? "") || null : null;
-  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-check-rounds`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ validation_set_id: validationSetId, location_text: String(formData.get("location") ?? "") || null, web_search_enabled: formData.get("webSearch") === "on", raw_qa_text: String(formData.get("rawQaText") ?? ""), inherited_source_round_id: inherited, results, sources: inherited ? [] : sources }) });
+  const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-check-rounds`, { method: "POST", headers: await trustedApiHeaders({ "content-type": "application/json" }), body: JSON.stringify({ validation_set_id: validationSetId, location_text: String(formData.get("location") ?? "") || null, web_search_enabled: formData.get("webSearch") === "on", raw_qa_text: String(formData.get("rawQaText") ?? ""), inherited_source_round_id: inherited, results, sources: inherited ? [] : sources }) });
   if (!response.ok) throw new Error("保存手机版实测失败");
   const round = await response.json() as { id: string };
-  for (const entry of formData.getAll("evidence")) if (entry instanceof File && entry.size > 0) await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-check-rounds/${round.id}/evidence`, { method: "POST", headers: { "content-type": entry.type, "x-filename": encodeURIComponent(entry.name) }, body: entry });
-  await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-check-rounds/${round.id}/confirm`, { method: "POST" });
+  for (const entry of formData.getAll("evidence")) if (entry instanceof File && entry.size > 0) await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-check-rounds/${round.id}/evidence`, { method: "POST", headers: await trustedApiHeaders({ "content-type": entry.type, "x-filename": encodeURIComponent(entry.name) }), body: entry });
+  await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-check-rounds/${round.id}/confirm`, { method: "POST", headers: await trustedApiHeaders() });
   redirect(`/mobile-checks?merchant=${encodeURIComponent(merchantId)}`);
 }

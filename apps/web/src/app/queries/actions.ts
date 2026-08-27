@@ -1,6 +1,7 @@
 "use server";
 
 import { ApiError, createScanRun, updateQuery } from "@/lib/api";
+import { requireServerAdmin } from "@/lib/server-access";
 import type { QueryData, ScanRunData } from "@/lib/contracts";
 
 export type ActionResult<T> =
@@ -18,6 +19,7 @@ export async function updateQueryAction(
   queryId: string,
   changes: QueryActionChanges,
 ): Promise<ActionResult<QueryData>> {
+  await requireServerAdmin();
   try {
     const data = await updateQuery(queryId, {
       text: changes.text,
@@ -38,6 +40,7 @@ export async function createScanAction(
   merchantId: string,
   querySetId: string,
 ): Promise<ActionResult<Pick<ScanRunData, "id" | "status">>> {
+  await requireServerAdmin();
   try {
     const data = await createScanRun(merchantId, querySetId);
     return { ok: true, data: { id: data.id, status: data.status } };

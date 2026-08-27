@@ -1,8 +1,22 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { headersMock } = vi.hoisted(() => ({ headersMock: vi.fn() }));
+
+vi.mock("next/headers", () => ({ headers: headersMock }));
 
 import { createScanAction, updateQueryAction } from "@/app/queries/actions";
+import { DemoReadOnlyError } from "@/lib/server-access";
+
+beforeEach(() => {
+  headersMock.mockResolvedValue(new Headers({ "x-access-role": "admin" }));
+  process.env.ACCESS_AUTH_REQUIRED = "true";
+  process.env.INTERNAL_API_SECRET = "test-internal-secret";
+});
 
 afterEach(() => {
+  headersMock.mockReset();
+  delete process.env.ACCESS_AUTH_REQUIRED;
+  delete process.env.INTERNAL_API_SECRET;
   vi.unstubAllGlobals();
 });
 
@@ -35,6 +49,9 @@ describe("query workflow server actions", () => {
         body: JSON.stringify({ review_status: "approved", is_enabled: true }),
       }),
     );
+    const requestHeaders = fetchMock.mock.calls[0][1]?.headers as Headers;
+    expect(requestHeaders.get("x-access-role")).toBe("admin");
+    expect(requestHeaders.get("x-internal-auth")).toBe("test-internal-secret");
   });
 
   it("creates an Ark scan without waiting for model results", async () => {
@@ -76,5 +93,14 @@ describe("query workflow server actions", () => {
       ok: false,
       error: "当前没有已批准且启用的问题，请先审核问题库。",
     });
+  });
+
+  it("rejects a demo query mutation before fetch runs", async () => {
+    headersMock.mockResolvedValue(new Headers({ "x-access-role": "demo" }));
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(updateQueryAction("q1", { text: "不能修改" })).rejects.toBeInstanceOf(DemoReadOnlyError);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
