@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Body, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.access import AdminAccessDep
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.mobile_checks.models import MobileEvidence
@@ -45,7 +46,11 @@ SourceAdapterDep = Annotated[SearchAdapter, Depends(get_mobile_source_adapter)]
 
 
 @router.post("/merchants/{merchant_id}/mobile-validation-sets", response_model=MobileValidationSetRead, status_code=status.HTTP_201_CREATED)
-def create_validation_set(merchant_id: UUID, session: SessionDep):
+def create_validation_set(
+    merchant_id: UUID,
+    session: SessionDep,
+    _access: AdminAccessDep,
+):
     try:
         return MobileCheckService(session).create_validation_set(merchant_id)
     except NoApprovedQueriesError as exc:
@@ -53,7 +58,12 @@ def create_validation_set(merchant_id: UUID, session: SessionDep):
 
 
 @router.post("/merchants/{merchant_id}/mobile-validation-sets/select", response_model=MobileValidationSetRead, status_code=status.HTTP_201_CREATED)
-def select_validation_set(merchant_id: UUID, payload: MobileValidationSetCreate, session: SessionDep):
+def select_validation_set(
+    merchant_id: UUID,
+    payload: MobileValidationSetCreate,
+    session: SessionDep,
+    _access: AdminAccessDep,
+):
     try:
         return MobileCheckService(session).create_validation_set(merchant_id, payload.query_ids)
     except NoApprovedQueriesError as exc:
@@ -66,7 +76,12 @@ def list_validation_sets(merchant_id: UUID, session: SessionDep):
 
 
 @router.post("/merchants/{merchant_id}/mobile-check-rounds", response_model=MobileRoundRead, status_code=status.HTTP_201_CREATED)
-def create_round(merchant_id: UUID, payload: MobileRoundCreate, session: SessionDep):
+def create_round(
+    merchant_id: UUID,
+    payload: MobileRoundCreate,
+    session: SessionDep,
+    _access: AdminAccessDep,
+):
     record = MobileCheckService(session).create_round(merchant_id, payload)
     if record is None:
         raise HTTPException(status_code=404, detail="validation set or inherited round not found")
@@ -74,7 +89,12 @@ def create_round(merchant_id: UUID, payload: MobileRoundCreate, session: Session
 
 
 @router.post("/merchants/{merchant_id}/mobile-check-rounds/{round_id}/confirm", response_model=MobileRoundRead)
-def confirm_round(merchant_id: UUID, round_id: UUID, session: SessionDep):
+def confirm_round(
+    merchant_id: UUID,
+    round_id: UUID,
+    session: SessionDep,
+    _access: AdminAccessDep,
+):
     record = MobileCheckService(session).confirm_round(round_id, merchant_id)
     if record is None:
         raise HTTPException(status_code=404, detail="round not found")
@@ -98,6 +118,7 @@ async def discover_mobile_sources(
     payload: MobileSourceDiscoveryCreate,
     session: SessionDep,
     adapter: SourceAdapterDep,
+    _access: AdminAccessDep,
 ):
     try:
         return await MobileSourceDiscoveryService(session, adapter).discover(
@@ -114,6 +135,7 @@ async def upload_evidence(
     round_id: UUID,
     session: SessionDep,
     request: Request,
+    _access: AdminAccessDep,
     content: bytes = Body(...),
     x_filename: str = Header(default="evidence"),
 ):

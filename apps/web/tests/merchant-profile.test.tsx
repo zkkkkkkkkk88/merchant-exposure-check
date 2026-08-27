@@ -3,10 +3,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 import { ProfileEditor } from "@/components/profile-editor";
 import {
-  generateQuerySet,
-  parseMerchantProfile,
-  replaceMerchantProfile,
-} from "@/lib/api";
+  parseProfileAction,
+  saveProfileAction,
+  saveProfileAndGenerateAction,
+} from "@/app/merchants/[id]/actions";
 
 const push = vi.fn();
 
@@ -14,25 +14,31 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, refresh: vi.fn() }),
 }));
 
-vi.mock("@/lib/api", () => ({
-  parseMerchantProfile: vi.fn(),
-  replaceMerchantProfile: vi.fn(),
-  generateQuerySet: vi.fn(),
+vi.mock("@/app/merchants/[id]/actions", () => ({
+  parseProfileAction: vi.fn(),
+  saveProfileAction: vi.fn(),
+  saveProfileAndGenerateAction: vi.fn(),
 }));
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(parseMerchantProfile).mockResolvedValue({
-    merchant_id: "m1",
-    facts: [
-      { field_key: "location.city", value: "杭州", confirmation_status: "pending", confidence: 0.99, source_urls: [] },
-      { field_key: "category.precise", value: "西餐厅", confirmation_status: "pending", confidence: 0.95, source_urls: [] },
-      { field_key: "price.display", value: "双人餐 300–450 元", confirmation_status: "pending", confidence: 0.96, source_urls: [] },
-      { field_key: "service.baby_chair", value: true, confirmation_status: "pending", confidence: 0.9, source_urls: [] },
-    ],
+  vi.mocked(parseProfileAction).mockResolvedValue({
+    ok: true,
+    data: {
+      merchant_id: "m1",
+      facts: [
+        { field_key: "location.city", value: "杭州", confirmation_status: "pending", confidence: 0.99, source_urls: [] },
+        { field_key: "category.precise", value: "西餐厅", confirmation_status: "pending", confidence: 0.95, source_urls: [] },
+        { field_key: "price.display", value: "双人餐 300–450 元", confirmation_status: "pending", confidence: 0.96, source_urls: [] },
+        { field_key: "service.baby_chair", value: true, confirmation_status: "pending", confidence: 0.9, source_urls: [] },
+      ],
+    },
   });
-  vi.mocked(replaceMerchantProfile).mockImplementation(async (_id, facts) => ({ merchant_id: "m1", facts }));
-  vi.mocked(generateQuerySet).mockResolvedValue({ id: "set2" });
+  vi.mocked(saveProfileAction).mockImplementation(async (_id, facts) => ({
+    ok: true,
+    data: { merchant_id: "m1", facts },
+  }));
+  vi.mocked(saveProfileAndGenerateAction).mockResolvedValue({ ok: true, data: { id: "set2" } });
 });
 
 it("parses pasted merchant text and requires confirmation before query generation", async () => {
@@ -53,8 +59,7 @@ it("parses pasted merchant text and requires confirmation before query generatio
   fireEvent.click(screen.getByRole("checkbox", { name: "确认 宝宝椅" }));
   fireEvent.click(screen.getByRole("button", { name: "保存并生成精准问题" }));
 
-  await waitFor(() => expect(replaceMerchantProfile).toHaveBeenCalled());
-  expect(generateQuerySet).toHaveBeenCalledWith("m1", 15);
+  await waitFor(() => expect(saveProfileAndGenerateAction).toHaveBeenCalledWith("m1", expect.any(Array)));
   expect(push).toHaveBeenCalledWith("/queries?merchant=m1");
 });
 
@@ -86,10 +91,10 @@ it("saves edited profile facts without generating a new query set", async () => 
   });
   fireEvent.click(screen.getByRole("button", { name: "仅保存修改" }));
 
-  await waitFor(() => expect(replaceMerchantProfile).toHaveBeenCalledWith(
+  await waitFor(() => expect(saveProfileAction).toHaveBeenCalledWith(
     "m1",
     expect.arrayContaining([expect.objectContaining({ field_key: "category.precise", value: "口腔门诊" })]),
   ));
-  expect(generateQuerySet).not.toHaveBeenCalled();
+  expect(saveProfileAndGenerateAction).not.toHaveBeenCalled();
   expect(await screen.findByText("商家画像已保存。" )).toBeVisible();
 });

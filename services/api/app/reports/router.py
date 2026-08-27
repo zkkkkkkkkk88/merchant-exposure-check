@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.access import AdminAccessDep
 from app.db.session import get_session
 from app.merchants.models import Merchant, MerchantProfileFact
 from app.mobile_checks.models import MobileCheckRound
@@ -404,6 +405,7 @@ def add_manual_check(
     scan_run_id: UUID,
     payload: ManualCheckCreate,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> ManualCheckRead:
     try:
         return ManualCheckRead.model_validate(

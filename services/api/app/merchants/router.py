@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.access import AdminAccessDep
 from app.db.session import get_session
 from app.merchants.schemas import (
     MerchantCreate,
@@ -25,6 +26,7 @@ SessionDep = Annotated[Session, Depends(get_session)]
 def create_merchant(
     payload: MerchantCreate,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> MerchantRead:
     return MerchantRead.model_validate(MerchantService.create(session, payload))
 
@@ -50,6 +52,7 @@ def update_merchant(
     merchant_id: UUID,
     payload: MerchantUpdate,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> MerchantRead:
     try:
         merchant = MerchantService.update(session, merchant_id, payload)
@@ -71,6 +74,7 @@ def replace_merchant_profile(
     merchant_id: UUID,
     payload: MerchantProfileWrite,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> MerchantProfileRead:
     try:
         return MerchantService.replace_profile(session, merchant_id, payload)
@@ -83,6 +87,7 @@ def parse_merchant_profile(
     merchant_id: UUID,
     payload: MerchantProfileParseRequest,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> MerchantProfileRead:
     try:
         return MerchantService.parse_profile(session, merchant_id, payload)
@@ -99,7 +104,11 @@ def get_local_context(merchant_id: UUID, session: SessionDep) -> MerchantLocalCo
 
 
 @router.post("/{merchant_id}/local-context/refresh", response_model=MerchantLocalContextRead)
-def refresh_local_context(merchant_id: UUID, session: SessionDep) -> MerchantLocalContextRead:
+def refresh_local_context(
+    merchant_id: UUID,
+    session: SessionDep,
+    _access: AdminAccessDep,
+) -> MerchantLocalContextRead:
     merchant = MerchantService.get(session, merchant_id)
     if merchant is None:
         raise HTTPException(status_code=404, detail="Merchant not found")

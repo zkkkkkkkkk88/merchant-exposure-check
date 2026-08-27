@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAccessRole } from "./access-role-provider";
 
 import {
   parseProfileAction,
@@ -46,6 +47,7 @@ export function ProfileEditor({
   merchantId: string;
 }) {
   const router = useRouter();
+  const role = useAccessRole();
   const [facts, setFacts] = useState(() => ensureRequiredFacts(initialProfile.facts));
   const [rawText, setRawText] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -115,11 +117,19 @@ export function ProfileEditor({
 
   return (
     <div className="profile-editor">
+      <section className="profile-facts-confirmed" aria-labelledby="confirmed-profile-title">
+        <div className="section-heading"><div><p className="kicker">READ FIRST</p><h2 id="confirmed-profile-title">已确认商家资料</h2></div></div>
+        <dl className="profile-fact-reading">
+          {facts.map((fact) => <div key={fact.field_key}><dt>{profileFieldLabel(fact.field_key)}</dt><dd>{displayValue(fact.value) || "当前未录入"}</dd><small>{fact.confirmation_status === "confirmed" ? "已确认" : "待确认"}</small></div>)}
+        </dl>
+      </section>
+      <section className={`profile-administration${role === "demo" ? " profile-administration-locked" : ""}`} aria-labelledby="profile-administration-title">
+        <header className="section-heading"><div><p className="kicker">ADMINISTRATION</p><h2 id="profile-administration-title">管理员资料操作</h2><p className="profile-admin-note">{role === "demo" ? "演示模式仅可查看资料，管理员才能导入、编辑或保存。" : "导入公开资料并确认后，才会用于生成检测问题。"}</p></div></header>
       <section className="profile-import">
         <div className="section-heading"><div><p className="kicker">SOURCE TEXT</p><h2>导入公开资料</h2></div></div>
         <label>粘贴商家公开资料<textarea aria-label="粘贴商家公开资料" rows={6} value={rawText} onChange={(event) => setRawText(event.target.value)} /></label>
         <label>资料来源链接（可选）<input value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://" /></label>
-        <button className="button secondary" disabled={busy || rawText.trim().length < 10} onClick={parse} type="button">识别资料</button>
+        <button className="button secondary" data-requires-admin="true" disabled={busy || rawText.trim().length < 10} onClick={parse} type="button">识别资料</button>
         {rawText.trim().length < 10 && <p className="method-copy">请先粘贴至少 10 个字的商家资料；来源链接可以不填。</p>}
         {message && <p className="save-saved" role="status">{message}</p>}
       </section>
@@ -134,6 +144,7 @@ export function ProfileEditor({
                 <label className="fact-confirm">
                   <input
                     aria-label={`确认 ${label}`}
+                    data-requires-admin="true"
                     checked={fact.confirmation_status === "confirmed"}
                     onChange={(event) => updateFact(index, { confirmation_status: event.target.checked ? "confirmed" : "pending" })}
                     type="checkbox"
@@ -142,6 +153,7 @@ export function ProfileEditor({
                 </label>
                 <input
                   aria-label={`编辑 ${label}`}
+                  data-requires-admin="true"
                   value={displayValue(fact.value)}
                   onChange={(event) => updateFact(index, { value: editValue(fact.value, event.target.value) })}
                 />
@@ -153,9 +165,10 @@ export function ProfileEditor({
         {!ready && <p className="method-copy">请确认城市和精准品类后再生成问题。</p>}
         {error && <p className="form-error" role="alert">{error}</p>}
         <div className="form-actions">
-          <button className="button secondary" disabled={busy} onClick={saveOnly} type="button">仅保存修改</button>
-          <button className="button primary" disabled={!ready || busy} onClick={saveAndGenerate} type="button">{busy ? "处理中…" : "保存并生成精准问题"}</button>
+          <button className="button secondary" data-requires-admin="true" disabled={busy} onClick={saveOnly} type="button">仅保存修改</button>
+          <button className="button primary" data-requires-admin="true" disabled={!ready || busy} onClick={saveAndGenerate} type="button">{busy ? "处理中…" : "保存并生成精准问题"}</button>
         </div>
+      </section>
       </section>
     </div>
   );

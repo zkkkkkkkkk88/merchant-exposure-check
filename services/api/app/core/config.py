@@ -7,6 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://postgres:postgres@db:5432/exposure"
+    access_auth_required: bool = False
+    internal_api_secret: SecretStr = SecretStr("")
     ark_api_key: SecretStr = SecretStr("")
     ark_model: str = "doubao-seed-2-0-lite-260215"
     amap_key: SecretStr = SecretStr("")

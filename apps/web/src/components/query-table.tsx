@@ -164,7 +164,7 @@ export function QueryTable({
             );
           })}
         </nav>
-        <button className="text-button" onClick={handleBatchApprove} type="button">
+        <button className="text-button" data-requires-admin="true" onClick={handleBatchApprove} type="button">
           批量批准待审核
         </button>
       </div>
@@ -178,6 +178,7 @@ export function QueryTable({
         </div>
         <button
           className="button primary"
+          data-requires-admin="true"
           disabled={!eligible || creating}
           onClick={handleCreateScan}
           type="button"
@@ -188,9 +189,9 @@ export function QueryTable({
 
       <div className="table-wrap">
         <p className="mobile-table-hint">每道问题可直接审核、启用或停用。</p>
-        <table aria-label="待审核问题库">
+        <table aria-label="待审核问题库" className="responsive-record-table">
           <thead>
-            <tr><th>问题</th><th>检测类型</th><th>分类</th><th>生成理由</th><th>优先级</th><th>状态</th><th>操作</th></tr>
+            <tr><th scope="col">问题</th><th scope="col">检测类型</th><th scope="col">分类</th><th scope="col">生成理由</th><th scope="col">优先级</th><th scope="col">状态</th><th scope="col">操作</th></tr>
           </thead>
           <tbody>
             {visibleQueries.map((item) => {
@@ -198,9 +199,10 @@ export function QueryTable({
               const isSaving = status?.state === "saving";
               return (
                 <tr className={!item.isEnabled || item.reviewStatus === "rejected" ? "excluded-row" : ""} key={item.id}>
-                  <th data-label="问题">
+                  <th data-label="问题" data-primary="true" scope="row">
                     <input
                       aria-label={`编辑问题 ${item.id}`}
+                      data-requires-admin="true"
                       disabled={isSaving}
                       value={item.text}
                       onBlur={() => handleTextBlur(item.id)}
@@ -217,12 +219,14 @@ export function QueryTable({
                       <>
                         <button
                           className="row-action"
+                          data-requires-admin="true"
                           disabled={isSaving}
                           onClick={() => persist(item.id, { reviewStatus: "approved", isEnabled: true }, { reviewStatus: "approved", isEnabled: true })}
                           type="button"
                         >批准并用于检测</button>
                         <button
                           className="row-action muted"
+                          data-requires-admin="true"
                           disabled={isSaving}
                           onClick={() => persist(item.id, { reviewStatus: "rejected", isEnabled: false }, { reviewStatus: "rejected", isEnabled: false })}
                           type="button"
@@ -232,6 +236,7 @@ export function QueryTable({
                       <label className="toggle-label">
                         <input
                           aria-label={`用于检测 ${item.id}`}
+                          data-requires-admin="true"
                           type="checkbox"
                           checked={item.reviewStatus === "approved" && item.isEnabled}
                           disabled={isSaving}

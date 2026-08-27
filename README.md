@@ -6,7 +6,7 @@
 
 ### Windows 一键启动
 
-首次运行仍需按照下方步骤安装依赖，并在 `services/api/.env` 中填写配置。之后在项目根目录运行：
+首次运行仍需按照下方步骤安装依赖，并按“配置”章节创建本地 `.env` 文件。之后在项目根目录运行：
 
 ```powershell
 .\scripts\start-dev.cmd
@@ -55,15 +55,28 @@ npm.cmd run dev
 
 ## 配置
 
-真实密钥只写入 `services/api/.env`：
+复制 `services/api/.env.example` 到 `services/api/.env`，复制 `apps/web/.env.example` 到 `apps/web/.env.local`，再填写本机或部署环境的配置。API 只接收 `ACCESS_AUTH_REQUIRED` 与 `INTERNAL_API_SECRET`；网页端接收下面七个访问变量：
 
 ```dotenv
-DATABASE_URL=sqlite+pysqlite:///./merchant-exposure.db
-ARK_API_KEY=
-ARK_MODEL=doubao-seed-2-0-pro-260215
+ACCESS_AUTH_REQUIRED=true
+ACCESS_ADMIN_USERNAME=
+ACCESS_ADMIN_PASSWORD_HASH=
+ACCESS_DEMO_USERNAME=
+ACCESS_DEMO_PASSWORD_HASH=
+ACCESS_SESSION_SECRET=
+INTERNAL_API_SECRET=
 ```
 
-不要把 API Key 写入 `.env.example`、网页代码、提交记录或截图。火山方舟账号需要同时开通对应模型、Responses API 和联网搜索服务。
+不要把密码、密码哈希、会话密钥、内部 API 密钥或 API Key 写入示例文件、网页代码、提交记录或截图。生产环境中的 `ACCESS_SESSION_SECRET` 与 `INTERNAL_API_SECRET` 必须分别生成、彼此独立的高熵随机密钥。火山方舟配置仍只写入 `services/api/.env`，账号需要同时开通对应模型、Responses API 和联网搜索服务。
+
+生成密码哈希时在网页项目目录运行交互式命令（输入内容不会写入仓库）：
+
+```powershell
+cd apps/web
+node scripts/hash-access-password.mjs
+```
+
+管理员凭据允许创建、保存、生成、启动、重试和采用等写操作；演示凭据只能读取数据，网页会显示“演示模式”并解释被锁定的操作。轮换 `ACCESS_SESSION_SECRET` 会使所有现有会话失效并要求重新登录。详细角色边界与值班流程见 [操作手册](docs/operator-guide.md)。
 
 ## 数据原则
 

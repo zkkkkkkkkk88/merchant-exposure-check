@@ -25,6 +25,8 @@ services:
       ARK_MODEL: ${ARK_MODEL}
       AMAP_KEY: ${AMAP_KEY:-}
       TENCENT_MAP_KEY: ${TENCENT_MAP_KEY:-}
+      ACCESS_AUTH_REQUIRED: "true"
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     depends_on:
       db:
         condition: service_healthy
@@ -59,6 +61,13 @@ services:
     restart: unless-stopped
     environment:
       API_BASE_URL: http://api:8000
+      ACCESS_AUTH_REQUIRED: "true"
+      ACCESS_ADMIN_USERNAME: ${ACCESS_ADMIN_USERNAME}
+      ACCESS_ADMIN_PASSWORD_HASH: ${ACCESS_ADMIN_PASSWORD_HASH}
+      ACCESS_DEMO_USERNAME: ${ACCESS_DEMO_USERNAME}
+      ACCESS_DEMO_PASSWORD_HASH: ${ACCESS_DEMO_PASSWORD_HASH}
+      ACCESS_SESSION_SECRET: ${ACCESS_SESSION_SECRET}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     depends_on:
       api:
         condition: service_healthy
@@ -73,9 +82,6 @@ services:
   gateway:
     image: caddy:2-alpine
     restart: unless-stopped
-    environment:
-      AUTH_USERNAME: ${AUTH_USERNAME}
-      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
     depends_on:
       web:
         condition: service_healthy

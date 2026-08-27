@@ -2,20 +2,23 @@
 
 import { redirect } from "next/navigation";
 import { SERVER_API_BASE_URL } from "@/lib/server-api-base";
+import { requireServerAdmin, trustedApiHeaders } from "@/lib/server-access";
 
 const API_BASE_URL = SERVER_API_BASE_URL;
 
 export async function createPlatformAudit(formData: FormData): Promise<void> {
+  await requireServerAdmin();
   const merchantId = String(formData.get("merchantId") ?? "");
   const response = await fetch(
     `${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/platform-audits`,
-    { method: "POST" },
+    { method: "POST", headers: await trustedApiHeaders() },
   );
   if (!response.ok) throw new Error("创建平台查缺任务失败");
   redirect(`/platform-audits?merchant=${encodeURIComponent(merchantId)}`);
 }
 
 export async function adoptPlatformField(formData: FormData): Promise<void> {
+  await requireServerAdmin();
   const merchantId = String(formData.get("merchantId") ?? "");
   const resultId = String(formData.get("resultId") ?? "");
   const fieldKey = String(formData.get("fieldKey") ?? "");
@@ -23,7 +26,7 @@ export async function adoptPlatformField(formData: FormData): Promise<void> {
     `${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/platform-audits/results/${encodeURIComponent(resultId)}/adopt`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: await trustedApiHeaders({ "content-type": "application/json" }),
       body: JSON.stringify({ field_key: fieldKey }),
     },
   );

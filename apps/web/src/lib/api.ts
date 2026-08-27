@@ -18,6 +18,7 @@ import type {
 } from "./contracts";
 import type { MerchantPayload } from "@/components/merchant-form";
 import { SERVER_API_BASE_URL } from "@/lib/server-api-base";
+import { trustedApiHeaders } from "./server-access";
 
 const API_BASE_URL = SERVER_API_BASE_URL;
 
@@ -34,7 +35,7 @@ export class ApiError extends Error {
 export async function getDashboard(merchantId: string): Promise<DashboardData | null> {
   const response = await fetch(
     `${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/dashboard`,
-    { cache: "no-store" },
+    { cache: "no-store", headers: await trustedApiHeaders() },
   );
   if (response.status === 404) return null;
   if (!response.ok) {
@@ -46,7 +47,7 @@ export async function getDashboard(merchantId: string): Promise<DashboardData | 
 export async function createMerchant(payload: MerchantPayload): Promise<{ id: string }> {
   const response = await fetch(`${API_BASE_URL}/merchants`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify(payload),
   });
   if (!response.ok) throw new ApiError(response.status, "保存失败，请稍后重试");
@@ -54,13 +55,13 @@ export async function createMerchant(payload: MerchantPayload): Promise<{ id: st
 }
 
 export async function getMerchants(): Promise<Array<{ id: string; name: string; branch_name: string | null }>> {
-  const response = await fetch(`${API_BASE_URL}/merchants`, { cache: "no-store" });
+  const response = await fetch(`${API_BASE_URL}/merchants`, { cache: "no-store", headers: await trustedApiHeaders() });
   if (!response.ok) throw new ApiError(response.status, "暂时无法读取商家列表。");
   return response.json() as Promise<Array<{ id: string; name: string; branch_name: string | null }>>;
 }
 
 async function readJson<T>(path: string, notFoundMessage: string): Promise<T | null> {
-  const response = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store" });
+  const response = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store", headers: await trustedApiHeaders() });
   if (response.status === 404) return null;
   if (!response.ok) throw new ApiError(response.status, notFoundMessage);
   return response.json() as Promise<T>;
@@ -87,7 +88,7 @@ export async function parseMerchantProfile(
 ): Promise<MerchantProfileData> {
   const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/profile/parse`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify({ raw_text: rawText, source_urls: sourceUrls }),
   });
   if (!response.ok) throw new ApiError(response.status, "资料识别失败，请检查内容后重试。");
@@ -100,7 +101,7 @@ export async function replaceMerchantProfile(
 ): Promise<MerchantProfileData> {
   const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/profile`, {
     method: "PUT",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify({ facts }),
   });
   if (!response.ok) throw new ApiError(response.status, "保存商家画像失败，请稍后重试。");
@@ -113,7 +114,7 @@ export async function generateQuerySet(
 ): Promise<{ id: string }> {
   const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/query-sets/generate`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify({ count }),
   });
   if (!response.ok) {
@@ -145,7 +146,7 @@ export async function updateQuery(
 ): Promise<QueryData> {
   const response = await fetch(`${API_BASE_URL}/queries/${encodeURIComponent(queryId)}`, {
     method: "PATCH",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify(payload),
     cache: "no-store",
   });
@@ -159,7 +160,7 @@ export async function createScanRun(
 ): Promise<ScanRunData> {
   const response = await fetch(`${API_BASE_URL}/scan-runs`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify({
       merchant_id: merchantId,
       query_set_id: querySetId,
@@ -181,7 +182,7 @@ export function getScanRun(scanRunId: string): Promise<ScanRunData | null> {
 export async function retryScanRun(scanRunId: string): Promise<ScanRunData> {
   const response = await fetch(
     `${API_BASE_URL}/scan-runs/${encodeURIComponent(scanRunId)}/retry`,
-    { method: "POST", cache: "no-store" },
+    { method: "POST", headers: await trustedApiHeaders(), cache: "no-store" },
   );
   if (!response.ok) {
     const detail = await response.json().catch(() => ({})) as { detail?: string };
@@ -226,7 +227,7 @@ export async function discoverMobileSources(
     `${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-checks/discover-sources`,
     {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: await trustedApiHeaders({ "content-type": "application/json" }),
       body: JSON.stringify(payload),
     },
   );
@@ -254,7 +255,7 @@ export function getJourneyProgress(merchantId: string): Promise<JourneyProgressD
 export async function selectMobileValidationSet(merchantId: string, queryIds: string[]): Promise<MobileValidationSetData> {
   const response = await fetch(`${API_BASE_URL}/merchants/${encodeURIComponent(merchantId)}/mobile-validation-sets/select`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: await trustedApiHeaders({ "content-type": "application/json" }),
     body: JSON.stringify({ query_ids: queryIds }),
   });
   if (!response.ok) throw new ApiError(response.status, "保存本轮3题失败，请确认恰好选择3道已审核的推荐题。");

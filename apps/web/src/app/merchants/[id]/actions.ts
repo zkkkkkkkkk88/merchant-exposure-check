@@ -6,6 +6,7 @@ import {
   parseMerchantProfile,
   replaceMerchantProfile,
 } from "@/lib/api";
+import { requireServerAdmin } from "@/lib/server-access";
 import type { MerchantProfileData, MerchantProfileFactData } from "@/lib/contracts";
 
 type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -19,6 +20,7 @@ export async function parseProfileAction(
   rawText: string,
   sourceUrls: string[],
 ): Promise<ActionResult<MerchantProfileData>> {
+  await requireServerAdmin();
   try {
     return { ok: true, data: await parseMerchantProfile(merchantId, rawText, sourceUrls) };
   } catch (error) {
@@ -30,6 +32,7 @@ export async function saveProfileAction(
   merchantId: string,
   facts: MerchantProfileFactData[],
 ): Promise<ActionResult<MerchantProfileData>> {
+  await requireServerAdmin();
   try {
     return { ok: true, data: await replaceMerchantProfile(merchantId, facts) };
   } catch (error) {
@@ -41,6 +44,7 @@ export async function saveProfileAndGenerateAction(
   merchantId: string,
   facts: MerchantProfileFactData[],
 ): Promise<ActionResult<{ id: string }>> {
+  await requireServerAdmin();
   try {
     await replaceMerchantProfile(merchantId, facts);
     return { ok: true, data: await generateQuerySet(merchantId, 15) };

@@ -7,6 +7,16 @@ from app.db.base import Base
 
 
 @pytest.fixture
+def admin_headers() -> dict[str, str]:
+    return {"X-Access-Role": "admin", "X-Internal-Auth": "test-internal-secret"}
+
+
+@pytest.fixture
+def demo_headers() -> dict[str, str]:
+    return {"X-Access-Role": "demo", "X-Internal-Auth": "test-internal-secret"}
+
+
+@pytest.fixture
 def db_session() -> Session:
     engine = create_engine(
         "sqlite+pysqlite:///:memory:",
