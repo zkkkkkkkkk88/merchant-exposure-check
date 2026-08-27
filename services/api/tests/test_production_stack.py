@@ -86,6 +86,26 @@ def test_production_environment_initializer_writes_role_based_access() -> None:
     assert "AUTH_PASSWORD_HASH=" not in script
 
 
+def test_existing_production_environment_can_migrate_without_replacing_database_secrets() -> None:
+    script = (ROOT / "scripts" / "configure-prod-access.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "deploy/.env.production" in script
+    assert "grep -vE" in script
+    assert "POSTGRES_PASSWORD" not in script
+    for name in (
+        "ACCESS_AUTH_REQUIRED=true",
+        "ACCESS_ADMIN_USERNAME=admin",
+        "ACCESS_ADMIN_PASSWORD_HASH=",
+        "ACCESS_DEMO_USERNAME=demo",
+        "ACCESS_DEMO_PASSWORD_HASH=",
+        "ACCESS_SESSION_SECRET=",
+        "INTERNAL_API_SECRET=",
+    ):
+        assert name in script
+
+
 def test_real_production_environment_is_not_tracked() -> None:
     ignored = (ROOT / ".gitignore").read_text(encoding="utf-8").splitlines()
 
