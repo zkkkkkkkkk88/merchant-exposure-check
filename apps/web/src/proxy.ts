@@ -12,10 +12,16 @@ type AccessDecision =
   | { action: "login" }
   | { action: "allow"; role: AccessRole };
 
-function isPublicAccessPath(pathname: string): boolean {
-  return pathname === "/login"
-    || pathname === "/login/"
-    || pathname === "/api/access/login"
+function isPublicAccessRequest(
+  pathname: string,
+  method: string,
+  hasServerAction: boolean,
+): boolean {
+  if (hasServerAction) return false;
+  if (pathname === "/login" || pathname === "/login/") {
+    return method === "GET" || method === "HEAD";
+  }
+  return pathname === "/api/access/login"
     || pathname.startsWith("/_next/static/")
     || pathname === "/_next/image"
     || pathname === "/favicon.ico";
@@ -25,8 +31,10 @@ export function accessDecisionForPath(
   pathname: string,
   authRequired: boolean,
   sessionRole: AccessRole | null,
+  method = "GET",
+  hasServerAction = false,
 ): AccessDecision {
-  if (isPublicAccessPath(pathname)) return { action: "public" };
+  if (isPublicAccessRequest(pathname, method, hasServerAction)) return { action: "public" };
   if (!authRequired) return { action: "allow", role: "admin" };
   if (!sessionRole) return { action: "login" };
   return { action: "allow", role: sessionRole };
@@ -41,9 +49,12 @@ function continueWithRole(request: NextRequest, role?: AccessRole): NextResponse
 
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  if (isPublicAccessPath(pathname)) return continueWithRole(request);
-
   const authRequired = process.env.ACCESS_AUTH_REQUIRED === "true";
+  const hasServerAction = request.headers.has("next-action");
+  if (isPublicAccessRequest(pathname, request.method, hasServerAction)) {
+    return continueWithRole(request);
+  }
+
   let role: AccessRole | null = null;
   if (authRequired) {
     const session = request.cookies.get(ACCESS_SESSION_COOKIE)?.value;
@@ -51,9 +62,15 @@ export async function proxy(request: NextRequest) {
     if (session && secret) role = await verifyAccessSession(session, secret);
   }
 
-  const decision = accessDecisionForPath(pathname, authRequired, role);
+  const decision = accessDecisionForPath(
+    pathname,
+    authRequired,
+    role,
+    request.method,
+    hasServerAction,
+  );
   if (decision.action === "login") {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", request.url), 303);
   }
 
   const merchantId = request.cookies.get(MERCHANT_CONTEXT_COOKIE)?.value;

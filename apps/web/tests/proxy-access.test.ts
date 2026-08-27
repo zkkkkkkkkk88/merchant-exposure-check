@@ -1,7 +1,19 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
 import { render, screen } from "@testing-library/react";
+
+const cryptoSpies = vi.hoisted(() => ({ scryptSync: vi.fn() }));
+
+vi.mock("node:crypto", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:crypto")>();
+  cryptoSpies.scryptSync.mockImplementation(actual.scryptSync);
+  return {
+    ...actual,
+    default: { ...actual, scryptSync: cryptoSpies.scryptSync },
+    scryptSync: cryptoSpies.scryptSync,
+  };
+});
 
 import LoginPage from "@/app/login/page";
 import { POST as login } from "@/app/api/access/login/route";
@@ -18,6 +30,7 @@ const DEMO_HASH = "scrypt$00112233445566778899aabbccddeeff$99f5251cf1506e7f2387a
 const ADMIN_HASH = "scrypt$ffeeddccbbaa99887766554433221100$1f22900a6ff17b05cb0ffa66f401d70792ba4ed215f1393eab3bef87deee4613c2b1b7390f3091a1b8af035af0f44201414c194b5f226ea140f464d55163c52a";
 
 afterEach(() => {
+  cryptoSpies.scryptSync.mockClear();
   delete process.env.ACCESS_AUTH_REQUIRED;
   delete process.env.ACCESS_SESSION_SECRET;
   delete process.env.ACCESS_ADMIN_USERNAME;
@@ -73,6 +86,12 @@ describe("proxy access decisions", () => {
     expect(accessDecisionForPath("/merchants", true, null)).toEqual({ action: "login" });
   });
 
+  it("does not make a Server Action POST to the login page public", () => {
+    expect(accessDecisionForPath("/login", true, null, "POST", true)).toEqual({
+      action: "login",
+    });
+  });
+
   it.each(["admin", "demo"] as const)("allows the verified %s role", (role) => {
     expect(accessDecisionForPath("/queries", true, role)).toEqual({
       action: "allow",
@@ -106,6 +125,22 @@ describe("proxy integration", () => {
     const response = await proxy(new NextRequest("http://localhost/merchants"));
 
     expect(response.headers.get("location")).toBe("http://localhost/login");
+  });
+
+  it("does not dispatch an unauthenticated Server Action POST from the login page", async () => {
+    process.env.ACCESS_AUTH_REQUIRED = "true";
+    process.env.ACCESS_SESSION_SECRET = SECRET;
+    const request = new NextRequest("http://localhost/login", {
+      method: "POST",
+      body: "action-payload",
+      headers: { "next-action": "mutating-action-id" },
+    });
+
+    const response = await proxy(request);
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("http://localhost/login");
+    expect(response.headers.get("x-middleware-next")).not.toBe("1");
   });
 
   it("replaces an incoming role header with the verified demo role", async () => {
@@ -166,6 +201,35 @@ describe("access Route Handlers", () => {
     expect(wrongPassword.headers.get("location")).toBe("http://localhost/login?error=invalid");
     expect(unknown.headers.get("set-cookie")).toBeNull();
     expect(wrongPassword.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("performs one scrypt verification for unknown and known usernames", async () => {
+    configureCredentials();
+
+    await login(loginRequest("unknown", "演示密码-123"));
+
+    expect(cryptoSpies.scryptSync).toHaveBeenCalledOnce();
+    expect(Buffer.from(cryptoSpies.scryptSync.mock.calls[0][1]).toString("hex")).toBe("00".repeat(16));
+    expect(cryptoSpies.scryptSync.mock.calls[0][2]).toBe(64);
+
+    cryptoSpies.scryptSync.mockClear();
+    await login(loginRequest("visitor", "wrong"));
+
+    expect(cryptoSpies.scryptSync).toHaveBeenCalledOnce();
+  });
+
+  it("performs one dummy scrypt verification when a credential field is missing", async () => {
+    configureCredentials();
+    const request = new NextRequest("http://localhost/api/access/login", {
+      method: "POST",
+      body: new URLSearchParams({ password: "演示密码-123" }),
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+    });
+
+    const response = await login(request);
+
+    expect(cryptoSpies.scryptSync).toHaveBeenCalledOnce();
+    expect(response.headers.get("location")).toBe("http://localhost/login?error=invalid");
   });
 
   it("fails closed when the session secret is missing", async () => {

@@ -14,25 +14,26 @@ type Credential = {
   passwordHash?: string;
 };
 
+const DUMMY_PASSWORD_HASH = `scrypt$${"00".repeat(16)}$${"00".repeat(64)}`;
+
 function invalidLogin(request: NextRequest): NextResponse {
   return NextResponse.redirect(new URL("/login?error=invalid", request.url), 303);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  let username: string;
-  let password: string;
+  let username = "";
+  let password = "";
+  let validForm = false;
   try {
     const form = await request.formData();
     const submittedUsername = form.get("username");
     const submittedPassword = form.get("password");
-    if (typeof submittedUsername !== "string" || typeof submittedPassword !== "string") {
-      return invalidLogin(request);
+    if (typeof submittedUsername === "string" && typeof submittedPassword === "string") {
+      username = submittedUsername;
+      password = submittedPassword;
+      validForm = true;
     }
-    username = submittedUsername;
-    password = submittedPassword;
-  } catch {
-    return invalidLogin(request);
-  }
+  } catch {}
 
   const credentials: Credential[] = [
     {
@@ -47,13 +48,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     },
   ];
   const credential = credentials.find((candidate) => (
-    candidate.username
-    && candidate.passwordHash
-    && username === candidate.username
-    && verifyPassword(password, candidate.passwordHash)
+    candidate.username && username === candidate.username
   ));
+  const passwordMatches = verifyPassword(
+    password,
+    credential?.passwordHash ?? DUMMY_PASSWORD_HASH,
+  );
   const secret = process.env.ACCESS_SESSION_SECRET;
-  if (!credential || !secret) return invalidLogin(request);
+  if (!validForm || !credential?.passwordHash || !passwordMatches || !secret) {
+    return invalidLogin(request);
+  }
 
   const session = await createAccessSession(credential.role, secret);
   const response = NextResponse.redirect(new URL("/", request.url), 303);
