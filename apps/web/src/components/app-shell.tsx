@@ -11,6 +11,7 @@ import { useAccessRole } from "./access-role-provider";
 import { BackLink } from "./back-link";
 import { ServiceStatus } from "./service-status";
 import { JourneyProgress } from "./journey-progress";
+import { MobileMerchantLabel } from "./mobile-merchant-label";
 
 const navigation = [
   ["总览", "/"],
@@ -21,6 +22,21 @@ const navigation = [
   ["检测", "/scans"],
   ["历史", "/history"],
   ["交付报告", "/delivery-report"],
+] as const;
+
+const mobilePrimaryNavigation = [
+  ["首页", "/"],
+  ["画像", "/merchants"],
+  ["检测", "/scans"],
+  ["报告", "/delivery-report"],
+] as const;
+
+const mobileMoreNavigation = [
+  ["平台查缺", "/platform-audits"],
+  ["问题策略", "/queries"],
+  ["手机实测", "/mobile-checks"],
+  ["历史", "/history"],
+  ["方法说明", "/methodology"],
 ] as const;
 
 function fallbackFor(pathname: string): string {
@@ -40,6 +56,8 @@ function isCurrent(pathname: string, href: string): boolean {
 function ShellContent({ children }: { children: ReactNode }) {
   const role = useAccessRole();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [phoneNavigation, setPhoneNavigation] = useState(false);
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
   const profileMerchant = pathname.match(/^\/merchants\/([^/]+)$/)?.[1];
@@ -47,6 +65,22 @@ function ShellContent({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (merchantId) persistMerchantContext(merchantId);
   }, [merchantId]);
+  useEffect(() => {
+    if (!moreOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMoreOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [moreOpen]);
+  useEffect(() => {
+    const media = window.matchMedia?.("(max-width: 720px)");
+    if (!media) return;
+    const update = () => setPhoneNavigation(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
   const withMerchant = (href: string) => {
     if (!merchantId) return href;
     if (href === "/merchants") return `/merchants/${encodeURIComponent(merchantId)}`;
@@ -80,6 +114,7 @@ function ShellContent({ children }: { children: ReactNode }) {
       </aside>
       <header className="mobile-header">
         <Link className="brand-mark" href={withMerchant("/")}><span>见</span><strong>见序</strong></Link>
+        <MobileMerchantLabel merchantId={merchantId} />
         <div className="mobile-header-actions">
           {role === "demo" && <span className="access-role-badge"><strong>演示模式</strong><small>演示模式不可操作</small></span>}
           <ServiceStatus compact />
@@ -117,6 +152,25 @@ function ShellContent({ children }: { children: ReactNode }) {
           );
         })}
       </nav>
+      <nav aria-hidden={!phoneNavigation} aria-label="手机版底部导航" className="mobile-bottom-navigation">
+        {mobilePrimaryNavigation.map(([label, href]) => {
+          const current = isCurrent(pathname, href);
+          return <Link aria-current={current ? "page" : undefined} className={current ? "active" : ""} href={withMerchant(href)} key={href}>{label}</Link>;
+        })}
+        <button aria-controls="mobile-more-sheet" aria-expanded={moreOpen} className={moreOpen ? "active" : ""} onClick={() => setMoreOpen((open) => !open)} type="button">更多</button>
+      </nav>
+      <div aria-labelledby="mobile-more-title" aria-modal="true" className="mobile-more-sheet" hidden={!moreOpen} id="mobile-more-sheet" role="dialog">
+        <button aria-label="关闭更多菜单" className="mobile-more-backdrop" onClick={() => setMoreOpen(false)} type="button" />
+        <div className="mobile-more-panel">
+          <header><h2 id="mobile-more-title">更多</h2><button aria-label="关闭更多菜单" className="mobile-more-close" onClick={() => setMoreOpen(false)} type="button">×</button></header>
+          <nav aria-label="更多导航">
+            {mobileMoreNavigation.map(([label, href]) => {
+              const current = isCurrent(pathname, href);
+              return <Link aria-current={current ? "page" : undefined} href={withMerchant(href)} key={href} onClick={() => setMoreOpen(false)}>{label}</Link>;
+            })}
+          </nav>
+        </div>
+      </div>
       <main className="app-content">
         {pathname !== "/" && <div className="global-back"><BackLink fallbackHref={fallbackFor(pathname)} /></div>}
         {merchantId && <JourneyProgress merchantId={merchantId} />}

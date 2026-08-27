@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAccessRole } from "./access-role-provider";
 
 import {
   parseProfileAction,
@@ -46,6 +47,7 @@ export function ProfileEditor({
   merchantId: string;
 }) {
   const router = useRouter();
+  const role = useAccessRole();
   const [facts, setFacts] = useState(() => ensureRequiredFacts(initialProfile.facts));
   const [rawText, setRawText] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
@@ -115,6 +117,14 @@ export function ProfileEditor({
 
   return (
     <div className="profile-editor">
+      <section className="profile-facts-confirmed" aria-labelledby="confirmed-profile-title">
+        <div className="section-heading"><div><p className="kicker">READ FIRST</p><h2 id="confirmed-profile-title">已确认商家资料</h2></div></div>
+        <dl className="profile-fact-reading">
+          {facts.map((fact) => <div key={fact.field_key}><dt>{profileFieldLabel(fact.field_key)}</dt><dd>{displayValue(fact.value) || "当前未录入"}</dd><small>{fact.confirmation_status === "confirmed" ? "已确认" : "待确认"}</small></div>)}
+        </dl>
+      </section>
+      <section className={`profile-administration${role === "demo" ? " profile-administration-locked" : ""}`} aria-labelledby="profile-administration-title">
+        <header className="section-heading"><div><p className="kicker">ADMINISTRATION</p><h2 id="profile-administration-title">管理员资料操作</h2><p className="profile-admin-note">{role === "demo" ? "演示模式仅可查看资料，管理员才能导入、编辑或保存。" : "导入公开资料并确认后，才会用于生成检测问题。"}</p></div></header>
       <section className="profile-import">
         <div className="section-heading"><div><p className="kicker">SOURCE TEXT</p><h2>导入公开资料</h2></div></div>
         <label>粘贴商家公开资料<textarea aria-label="粘贴商家公开资料" rows={6} value={rawText} onChange={(event) => setRawText(event.target.value)} /></label>
@@ -158,6 +168,7 @@ export function ProfileEditor({
           <button className="button secondary" data-requires-admin="true" disabled={busy} onClick={saveOnly} type="button">仅保存修改</button>
           <button className="button primary" data-requires-admin="true" disabled={!ready || busy} onClick={saveAndGenerate} type="button">{busy ? "处理中…" : "保存并生成精准问题"}</button>
         </div>
+      </section>
       </section>
     </div>
   );

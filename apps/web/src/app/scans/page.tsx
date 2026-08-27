@@ -36,19 +36,19 @@ export default async function ScansPage({
           <div className="state-page"><h2>暂无真实检测记录</h2><p>先创建商家并审核问题，再发起联网检测。</p></div>
         ) : (
           <div className="table-wrap">
-            <table aria-label="检测记录">
-              <thead><tr><th>执行时间</th><th>方式</th><th>状态</th><th>有效结果</th><th /></tr></thead>
+            <table aria-label="检测记录" className="responsive-record-table">
+              <thead><tr><th scope="col">执行时间</th><th scope="col">方式</th><th scope="col">状态</th><th scope="col">有效结果</th><th scope="col">操作</th></tr></thead>
               <tbody>
                 {runs.map((run) => (
                   <tr key={run.id}>
-                    <th>{new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.created_at))}</th>
-                    <td>{run.adapter_name === "ark" ? "火山方舟联网" : run.adapter_name}</td>
-                    <td>
+                    <th data-label="执行时间" data-primary="true" scope="row">{new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short" }).format(new Date(run.created_at))}</th>
+                    <td data-label="方式">{run.adapter_name === "ark" ? "火山方舟联网" : run.adapter_name}</td>
+                    <td data-label="状态">
                       <span>{statusLabels[run.status]}</span>
                       {run.error_summary && <small className="run-error-summary">{run.error_summary}</small>}
                     </td>
-                    <td>{run.success_count} / {run.success_count + run.failure_count}</td>
-                    <td className="run-actions">
+                    <td data-label="有效结果">{run.success_count} / {run.success_count + run.failure_count}</td>
+                    <td className="run-actions" data-label="操作">
                       <Link className="text-link" href={`/scans/${run.id}?merchant=${merchantId}`}>查看 →</Link>
                       {(run.status === "completed" || run.status === "partial") && (
                         <Link className="text-link" href={`/reports/${run.id}?merchant=${merchantId}`}>报告</Link>

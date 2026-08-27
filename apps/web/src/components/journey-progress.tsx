@@ -51,6 +51,15 @@ export function JourneyProgress({ merchantId }: { merchantId: string }) {
   const currentKey = currentJourneyKey(pathname, hash);
   const nextStep = progress.steps.find((step) => step.key === progress.current_step)
     ?? progress.steps.find((step) => step.status !== "completed");
+  const renderSteps = () => progress.steps.map((step, index) => {
+    const current = step.key === currentKey;
+    return <li className={`journey-step journey-${step.status}${current ? " journey-current" : ""}`} key={step.key}>
+      <Link aria-current={current ? "step" : undefined} href={step.href}>
+        <span>{index + 1}</span>
+        <small>{step.label}</small>
+      </Link>
+    </li>;
+  });
 
   return (
     <section className="journey-progress" aria-label="商家提升进度">
@@ -58,19 +67,10 @@ export function JourneyProgress({ merchantId }: { merchantId: string }) {
         <strong>商家进度 {progress.completed_count}/{progress.total_count}</strong>
         <span>{nextStep ? `下一步：${nextStep.label}` : "六步证据已完成"}</span>
       </div>
-      <ol>
-        {progress.steps.map((step, index) => {
-          const current = step.key === currentKey;
-          return (
-          <li className={`journey-step journey-${step.status}${current ? " journey-current" : ""}`} key={step.key}>
-            <Link aria-current={current ? "step" : undefined} href={step.href}>
-              <span>{index + 1}</span>
-              <small>{step.label}</small>
-            </Link>
-          </li>
-          );
-        })}
-      </ol>
+      <details className="journey-mobile-disclosure" open>
+        <summary><strong>{nextStep?.label ?? "六步证据已完成"}</strong><span>{progress.completed_count}/{progress.total_count} 已完成</span></summary>
+        <ol>{renderSteps()}</ol>
+      </details>
     </section>
   );
 }
