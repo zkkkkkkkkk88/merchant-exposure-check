@@ -164,7 +164,7 @@ export function QueryTable({
             );
           })}
         </nav>
-        <button className="text-button" onClick={handleBatchApprove} type="button">
+        <button className="text-button" data-requires-admin="true" onClick={handleBatchApprove} type="button">
           批量批准待审核
         </button>
       </div>
@@ -178,6 +178,7 @@ export function QueryTable({
         </div>
         <button
           className="button primary"
+          data-requires-admin="true"
           disabled={!eligible || creating}
           onClick={handleCreateScan}
           type="button"
@@ -201,6 +202,7 @@ export function QueryTable({
                   <th data-label="问题">
                     <input
                       aria-label={`编辑问题 ${item.id}`}
+                      data-requires-admin="true"
                       disabled={isSaving}
                       value={item.text}
                       onBlur={() => handleTextBlur(item.id)}
@@ -217,12 +219,14 @@ export function QueryTable({
                       <>
                         <button
                           className="row-action"
+                          data-requires-admin="true"
                           disabled={isSaving}
                           onClick={() => persist(item.id, { reviewStatus: "approved", isEnabled: true }, { reviewStatus: "approved", isEnabled: true })}
                           type="button"
                         >批准并用于检测</button>
                         <button
                           className="row-action muted"
+                          data-requires-admin="true"
                           disabled={isSaving}
                           onClick={() => persist(item.id, { reviewStatus: "rejected", isEnabled: false }, { reviewStatus: "rejected", isEnabled: false })}
                           type="button"
@@ -232,6 +236,7 @@ export function QueryTable({
                       <label className="toggle-label">
                         <input
                           aria-label={`用于检测 ${item.id}`}
+                          data-requires-admin="true"
                           type="checkbox"
                           checked={item.reviewStatus === "approved" && item.isEnabled}
                           disabled={isSaving}

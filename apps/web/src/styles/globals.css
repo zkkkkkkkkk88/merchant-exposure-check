@@ -41,6 +41,13 @@ button, input, select, textarea { font: inherit; }
 .service-status ul { display: grid; gap: 6px; list-style: none; margin: 12px 0 0; padding: 0; }
 .service-status.ready .live-dot { background: #69b38e; }
 .service-status.warning .live-dot { background: #d8a844; }
+.access-role-badge { align-items: flex-start; border: 1px solid #d8a844; color: #f5d78c; display: grid; gap: 3px; font-size: 11px; margin-top: 24px; padding: 9px 10px; }
+.access-role-badge strong { font-size: 12px; }
+.access-role-badge small { color: #e2c987; font-size: 10px; line-height: 1.4; }
+.demo-mutation-status { align-items: center; background: #fff6dd; border: 1px solid #d8a844; bottom: 24px; color: #4e3d14; display: flex; gap: 14px; justify-content: space-between; left: 50%; max-width: min(560px, calc(100vw - 32px)); padding: 12px 14px; position: fixed; transform: translateX(-50%); width: max-content; z-index: 100; }
+.demo-mutation-status button { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 11px; text-decoration: underline; }
+.demo-mutation-guard[data-role="demo"] [data-requires-admin="true"] { cursor: not-allowed; opacity: .72; }
+.demo-mutation-guard[data-role="demo"] button[data-requires-admin="true"]::after { color: #7d5c19; content: " · 演示模式不可操作"; display: inline; font-size: 10px; font-weight: 500; }
 .mobile-header-actions { align-items: center; display: flex; gap: 14px; }
 .mobile-header-actions a { color: #b8bdb9; font-size: 12px; }
 .mobile-service-state { color: #d8a844; font-size: 10px; }
@@ -539,6 +546,7 @@ tbody th { font-weight: 600; }
   .journey-step { min-width: 104px; }
   .journey-progress-summary { display: flex; justify-content: space-between; }
   .mobile-service-state, .back-link, .audit-evidence-meta dt, .audit-field-diffs small, .platform-audit-row summary small, .playbook-disclaimer, .publish-targets li p, .link-entry-hint { font-size: 12px; }
+  .access-role-badge { margin-top: 0; }
 }
 
 .delivery-report { margin: 0 auto; max-width: 1380px; padding: 48px clamp(28px, 5vw, 76px) 72px; }

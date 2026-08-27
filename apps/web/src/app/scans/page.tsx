@@ -54,10 +54,10 @@ export default async function ScansPage({
                         <Link className="text-link" href={`/reports/${run.id}?merchant=${merchantId}`}>报告</Link>
                       )}
                       {(run.status === "failed" || run.status === "partial") && (
-                        <form action={retryScanAction}>
+                        <form action={retryScanAction} data-requires-admin="true">
                           <input name="scanRunId" type="hidden" value={run.id} />
                           <input name="merchantId" type="hidden" value={merchantId} />
-                          <button className="text-button" type="submit">重新执行</button>
+                          <button className="text-button" data-requires-admin="true" type="submit">重新执行</button>
                         </form>
                       )}
                     </td>

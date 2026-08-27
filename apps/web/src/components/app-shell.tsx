@@ -6,6 +6,8 @@ import { Suspense, useEffect, useState, type ReactNode } from "react";
 
 import { persistMerchantContext } from "@/lib/merchant-context";
 
+import { DemoMutationGuard } from "./demo-mutation-guard";
+import { useAccessRole } from "./access-role-provider";
 import { BackLink } from "./back-link";
 import { ServiceStatus } from "./service-status";
 import { JourneyProgress } from "./journey-progress";
@@ -36,6 +38,7 @@ function isCurrent(pathname: string, href: string): boolean {
 }
 
 function ShellContent({ children }: { children: ReactNode }) {
+  const role = useAccessRole();
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
@@ -72,11 +75,13 @@ function ShellContent({ children }: { children: ReactNode }) {
             );
           })}
         </nav>
+        {role === "demo" && <span className="access-role-badge"><strong>演示模式</strong><small>演示模式不可操作</small></span>}
         <ServiceStatus />
       </aside>
       <header className="mobile-header">
         <Link className="brand-mark" href={withMerchant("/")}><span>见</span><strong>见序</strong></Link>
         <div className="mobile-header-actions">
+          {role === "demo" && <span className="access-role-badge"><strong>演示模式</strong><small>演示模式不可操作</small></span>}
           <ServiceStatus compact />
           <button
             aria-controls="mobile-navigation"
@@ -123,8 +128,8 @@ function ShellContent({ children }: { children: ReactNode }) {
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <Suspense fallback={<div className="app-shell"><main className="app-content">{children}</main></div>}>
-      <ShellContent>{children}</ShellContent>
+    <Suspense fallback={<DemoMutationGuard><div className="app-shell"><main className="app-content">{children}</main></div></DemoMutationGuard>}>
+      <DemoMutationGuard><ShellContent>{children}</ShellContent></DemoMutationGuard>
     </Suspense>
   );
 }

@@ -38,6 +38,7 @@ export function MobileSourceReview({
         </div>
         <button
           className="button secondary"
+          data-requires-admin="true"
           disabled={loading}
           onClick={onDiscover}
           type="button"

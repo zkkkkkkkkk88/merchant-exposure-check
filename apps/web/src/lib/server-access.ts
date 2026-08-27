@@ -29,7 +29,14 @@ export async function requireServerAdmin(): Promise<void> {
 
 export async function trustedApiHeaders(init?: HeadersInit): Promise<Headers> {
   const result = new Headers(init);
-  result.set("X-Access-Role", await getServerAccessRole());
+  let role: AccessRole;
+  try {
+    role = await getServerAccessRole();
+  } catch (error) {
+    if (process.env.ACCESS_AUTH_REQUIRED === "true") throw error;
+    role = "admin";
+  }
+  result.set("X-Access-Role", role);
   result.set("X-Internal-Auth", process.env.INTERNAL_API_SECRET ?? "");
   return result;
 }
