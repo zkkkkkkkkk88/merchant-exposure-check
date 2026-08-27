@@ -16,8 +16,8 @@ vi.mock("node:crypto", async (importOriginal) => {
 });
 
 import LoginPage from "@/app/login/page";
-import { POST as login } from "@/app/api/access/login/route";
-import { POST as logout } from "@/app/api/access/logout/route";
+import { POST as login } from "@/app/access/login/route";
+import { POST as logout } from "@/app/access/logout/route";
 import { createAccessSession, verifyAccessSession } from "@/lib/access-session";
 import {
   accessDecisionForPath,
@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 function loginRequest(username: string, password: string): NextRequest {
-  return new NextRequest("http://localhost/api/access/login", {
+  return new NextRequest("http://localhost/access/login", {
     method: "POST",
     body: new URLSearchParams({ username, password }),
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -59,7 +59,7 @@ describe("proxy access decisions", () => {
   it.each([
     "/login",
     "/login/",
-    "/api/access/login",
+    "/access/login",
     "/_next/static/chunks/app.js",
     "/_next/image",
     "/favicon.ico",
@@ -68,8 +68,8 @@ describe("proxy access decisions", () => {
   });
 
   it("requires a verified session for logout", () => {
-    expect(accessDecisionForPath("/api/access/logout", true, null)).toEqual({ action: "login" });
-    expect(accessDecisionForPath("/api/access/logout", true, "demo")).toEqual({
+    expect(accessDecisionForPath("/access/logout", true, null)).toEqual({ action: "login" });
+    expect(accessDecisionForPath("/access/logout", true, "demo")).toEqual({
       action: "allow",
       role: "demo",
     });
@@ -220,7 +220,7 @@ describe("access Route Handlers", () => {
 
   it("performs one dummy scrypt verification when a credential field is missing", async () => {
     configureCredentials();
-    const request = new NextRequest("http://localhost/api/access/login", {
+    const request = new NextRequest("http://localhost/access/login", {
       method: "POST",
       body: new URLSearchParams({ password: "演示密码-123" }),
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -243,7 +243,7 @@ describe("access Route Handlers", () => {
   });
 
   it("deletes only the access session on logout", async () => {
-    const response = await logout(new NextRequest("http://localhost/api/access/logout", {
+    const response = await logout(new NextRequest("http://localhost/access/logout", {
       method: "POST",
       headers: { cookie: "access_session=value; merchant_context=merchant-1" },
     }));
@@ -261,7 +261,7 @@ describe("login page", () => {
 
     expect(screen.getByRole("textbox", { name: "用户名" })).toHaveAttribute("name", "username");
     expect(screen.getByLabelText("密码")).toHaveAttribute("name", "password");
-    expect(screen.getByRole("form")).toHaveAttribute("action", "/api/access/login");
+    expect(screen.getByRole("form")).toHaveAttribute("action", "/access/login");
     expect(screen.getByText("用户名或密码不正确，请重试。")).toBeInTheDocument();
     expect(screen.getByText(/项目所有者提供的访问凭据/)).toBeInTheDocument();
   });

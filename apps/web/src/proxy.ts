@@ -21,7 +21,7 @@ function isPublicAccessRequest(
   if (pathname === "/login" || pathname === "/login/") {
     return method === "GET" || method === "HEAD";
   }
-  return pathname === "/api/access/login"
+  return pathname === "/access/login"
     || pathname.startsWith("/_next/static/")
     || pathname === "/_next/image"
     || pathname === "/favicon.ico";

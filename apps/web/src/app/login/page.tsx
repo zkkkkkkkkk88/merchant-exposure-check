@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams = Promise.resolve({}) }: 
             访客请使用项目所有者提供的访问凭据。管理员与演示访客将获得不同的访问权限。
           </p>
 
-          <form className="login-form" action="/api/access/login" method="post" aria-label="访问登录">
+          <form className="login-form" action="/access/login" method="post" aria-label="访问登录">
             <label>
               <span>用户名</span>
               <input name="username" type="text" autoComplete="username" placeholder="请输入用户名" required />
