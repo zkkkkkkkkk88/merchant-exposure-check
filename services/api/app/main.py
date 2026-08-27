@@ -15,7 +15,7 @@ app.add_middleware(
     allow_origins=["http://127.0.0.1:3000", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "X-Filename"],
+    allow_headers=["Content-Type", "X-Filename", "X-Access-Role", "X-Internal-Auth"],
 )
 app.include_router(merchants_router)
 app.include_router(mobile_checks_router)
