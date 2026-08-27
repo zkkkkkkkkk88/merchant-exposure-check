@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.access import AdminAccessDep
 from app.db.session import get_session
 from app.platform_audits.schemas import PlatformAuditAdoptRequest, PlatformAuditResultRead, PlatformAuditRunRead
 from app.platform_audits.service import (
@@ -23,7 +24,11 @@ SessionDep = Annotated[Session, Depends(get_session)]
     response_model=PlatformAuditRunRead,
     status_code=status.HTTP_201_CREATED,
 )
-def create_platform_audit(merchant_id: UUID, session: SessionDep):
+def create_platform_audit(
+    merchant_id: UUID,
+    session: SessionDep,
+    _access: AdminAccessDep,
+):
     try:
         return PlatformAuditService(session).create_run(merchant_id)
     except LookupError as exc:
@@ -50,6 +55,7 @@ def adopt_platform_field(
     result_id: UUID,
     payload: PlatformAuditAdoptRequest,
     session: SessionDep,
+    _access: AdminAccessDep,
 ):
     try:
         return PlatformAuditService(session).adopt_field(

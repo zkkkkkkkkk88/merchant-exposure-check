@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.access import AdminAccessDep
 from app.db.session import get_session
 from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.scans.schemas import ManualResultsCreate, ScanRunCreate, ScanRunRead
@@ -21,7 +22,11 @@ SessionDep = Annotated[Session, Depends(get_session)]
 
 
 @router.post("", response_model=ScanRunRead, status_code=status.HTTP_201_CREATED)
-def create_scan_run(payload: ScanRunCreate, session: SessionDep) -> ScanRunRead:
+def create_scan_run(
+    payload: ScanRunCreate,
+    session: SessionDep,
+    _access: AdminAccessDep,
+) -> ScanRunRead:
     try:
         run = ScanService.create_run(
             session,
@@ -61,7 +66,11 @@ def get_scan_run(scan_run_id: UUID, session: SessionDep) -> ScanRunRead:
     response_model=ScanRunRead,
     status_code=status.HTTP_201_CREATED,
 )
-def retry_scan_run(scan_run_id: UUID, session: SessionDep) -> ScanRunRead:
+def retry_scan_run(
+    scan_run_id: UUID,
+    session: SessionDep,
+    _access: AdminAccessDep,
+) -> ScanRunRead:
     try:
         run = ScanService.retry_run(session, scan_run_id)
     except ScanNotFoundError as error:
@@ -76,6 +85,7 @@ def add_manual_results(
     scan_run_id: UUID,
     payload: ManualResultsCreate,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> ScanRunRead:
     try:
         run = ScanService.add_manual_results(session, scan_run_id, payload)

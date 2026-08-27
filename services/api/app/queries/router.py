@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.access import AdminAccessDep
 from app.db.session import get_session
 from app.merchants.service import MerchantNotFoundError, MerchantService
 from app.queries.schemas import (
@@ -32,6 +33,7 @@ def generate_query_set(
     merchant_id: UUID,
     payload: QueryGenerateRequest,
     session: SessionDep,
+    _access: AdminAccessDep,
 ) -> QuerySetRead:
     try:
         query_set = QueryLibraryService.generate(session, merchant_id, payload.count)
@@ -53,7 +55,11 @@ def list_query_sets(merchant_id: UUID, session: SessionDep) -> list[QuerySetRead
 
 
 @router.post("/merchants/{merchant_id}/query-sets/cleanup", response_model=QuerySetCleanupRead)
-def cleanup_query_sets(merchant_id: UUID, session: SessionDep) -> QuerySetCleanupRead:
+def cleanup_query_sets(
+    merchant_id: UUID,
+    session: SessionDep,
+    _access: AdminAccessDep,
+) -> QuerySetCleanupRead:
     if MerchantService.get(session, merchant_id) is None:
         raise HTTPException(status_code=404, detail="Merchant not found")
     return QuerySetCleanupRead.model_validate(
@@ -62,7 +68,12 @@ def cleanup_query_sets(merchant_id: UUID, session: SessionDep) -> QuerySetCleanu
 
 
 @router.patch("/queries/{query_id}", response_model=QueryRead)
-def update_query(query_id: UUID, payload: QueryUpdate, session: SessionDep) -> QueryRead:
+def update_query(
+    query_id: UUID,
+    payload: QueryUpdate,
+    session: SessionDep,
+    _access: AdminAccessDep,
+) -> QueryRead:
     try:
         query = QueryLibraryService.update_query(session, query_id, payload)
     except QueryNotFoundError as error:
