@@ -190,6 +190,15 @@ export function QueryTable({
       <div className="table-wrap">
         <p className="mobile-table-hint">每道问题可直接审核、启用或停用。</p>
         <table aria-label="待审核问题库" className="responsive-record-table">
+          <colgroup>
+            <col className="query-col-question" />
+            <col className="query-col-intent" />
+            <col className="query-col-category" />
+            <col className="query-col-reason" />
+            <col className="query-col-priority" />
+            <col className="query-col-status" />
+            <col className="query-col-actions" />
+          </colgroup>
           <thead>
             <tr><th scope="col">问题</th><th scope="col">检测类型</th><th scope="col">分类</th><th scope="col">生成理由</th><th scope="col">优先级</th><th scope="col">状态</th><th scope="col">操作</th></tr>
           </thead>
@@ -200,10 +209,11 @@ export function QueryTable({
               return (
                 <tr className={!item.isEnabled || item.reviewStatus === "rejected" ? "excluded-row" : ""} key={item.id}>
                   <th data-label="问题" data-primary="true" scope="row">
-                    <input
+                    <textarea
                       aria-label={`编辑问题 ${item.id}`}
                       data-requires-admin="true"
                       disabled={isSaving}
+                      rows={2}
                       value={item.text}
                       onBlur={() => handleTextBlur(item.id)}
                       onChange={(event) => replaceQuery(item.id, { ...item, text: event.target.value })}
@@ -214,7 +224,8 @@ export function QueryTable({
                   <td data-label="生成理由">{item.reason}</td>
                   <td data-label="优先级">{item.priority}</td>
                   <td data-label="状态">{item.reviewStatus === "approved" ? "已批准" : item.reviewStatus === "rejected" ? "已拒绝" : "待审核"}</td>
-                  <td data-label="操作">
+                  <td className="query-action-cell" data-label="操作">
+                    <div aria-label={`问题操作 ${item.id}`} className="query-row-actions" role="group">
                     {item.reviewStatus === "pending" ? (
                       <>
                         <button
@@ -254,6 +265,7 @@ export function QueryTable({
                         {status.message}
                       </small>
                     )}
+                    </div>
                   </td>
                 </tr>
               );

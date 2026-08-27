@@ -1,52 +1,56 @@
-# Login split-screen design QA
+# Design QA
 
-## Evidence
+## Comparison targets
 
-- Source visual truth: `C:\\Users\\临渊羡鱼\\AppData\\Local\\Temp\\codex-clipboard-8b0fa24d-6bdf-4232-b7f2-c1bc6162de01.png`
-- Desktop implementation: `C:\\Users\\临渊羡鱼\\Documents\\ChatGPT\\nine\\docs\\audits\\login-split-desktop.png`
-- Mobile implementation: `C:\\Users\\临渊羡鱼\\Documents\\ChatGPT\\nine\\docs\\audits\\login-split-mobile.png`
-- Full-view comparison: `C:\\Users\\临渊羡鱼\\Documents\\ChatGPT\\nine\\docs\\audits\\login-split-comparison.png`
-- Source pixels: 1487 x 1058
-- Desktop implementation pixels / CSS viewport: 1440 x 1024 at device scale 1
-- Mobile implementation pixels / CSS viewport: 390 x 844 at device scale 1
-- Normalization: source was resized to 1440 x 1024 beside the 1440 x 1024 desktop capture.
-- State: default unauthenticated login screen.
+- Source visual truth:
+  - `C:/Users/临渊羡鱼/AppData/Local/Temp/codex-clipboard-1973fc45-99ce-4970-ae93-5bb8636d4c4a.png`
+  - `C:/Users/临渊羡鱼/AppData/Local/Temp/codex-clipboard-22c643a5-a339-4fd6-9e9c-ab8a4087f185.png`
+- Rendered implementation:
+  - `design-qa-profile-desktop.png`
+  - `design-qa-profile-mobile.png`
+  - `design-qa-queries-desktop-final.png`
+  - `design-qa-queries-mobile-final.png`
+- Combined comparison evidence:
+  - `design-qa-profile-comparison.png`
+  - `design-qa-queries-comparison-final.png`
+- State: merchant profile and query library for 澜沧皓雅口腔门诊部; authentication disabled only in the local QA runtime.
+- Desktop viewport: 1520 × 960 CSS px, device scale factor 1. Captures: source profile 1522 × 965 px, source queries 1497 × 963 px, implementation profile 1520 × 957 px, implementation queries 1505 × 947 px.
+- Mobile viewport: 390 × 844 CSS px, device scale factor 1. Browser content captures are 375 × 811 px after scrollbar/chrome reservation.
+- Density normalization: desktop source and implementation images were normalized to 1520 px wide before combined comparison.
 
 ## Findings
 
-- No actionable P0, P1, or P2 mismatch remains.
-- Typography: the serif display hierarchy, spaced English labels, restrained UI weights, and Chinese copy wrapping match the reference closely.
-- Spacing and layout: the 41/59 split, left copy inset, right form width, vertical alignment, input heights, and button placement match after the alignment pass.
-- Colors and tokens: the existing dark green, warm ivory, muted gray, and rust accent tokens reproduce the reference balance without introducing a second visual system.
-- Image quality and assets: the target contains no photographic product imagery. Its dense lower-left editorial linework and password eye are intentionally omitted instead of being approximated with CSS art or an unapproved glyph; this is accepted as P3 polish.
-- Copy and content: the brand, title, access explanation, labels, placeholders, and login CTA match the selected target. The previous role-description rows were removed as requested by the focused layout.
-- Responsive behavior: the mobile layout converts the left brand cover into a compact top masthead. At 390 x 844, the page and viewport are both 390 x 844 and the CTA ends at 692.7px, so the screen does not scroll.
-
-## Full-view comparison
-
-The combined source/implementation image shows equivalent major-region proportions, content order, form scale, visual hierarchy, and above-the-fold density. The implementation uses a plain divider on the brand panel in place of the source's decorative line grid.
-
-## Focused region comparison
-
-A separate crop was not needed: at the original 2880 x 1024 comparison size, the title, labels, inputs, CTA, and brand lockup remain readable enough to judge alignment, type hierarchy, borders, and spacing.
+- No remaining P0, P1, or P2 issues.
+- Typography: existing serif display hierarchy and compact sans-serif UI labels are preserved. Long question text now wraps to two lines instead of being clipped.
+- Spacing and layout rhythm: confirmed facts use a balanced two-column ledger on desktop and a single-column ledger on mobile. Query columns have stable proportions, and pending actions stack with consistent spacing.
+- Colors and tokens: the existing paper, ink, green, orange, line, and status colors are unchanged.
+- Image quality: these screens contain no content imagery or custom icon assets requiring fidelity review.
+- Copy and content: labels, merchant facts, query text, statuses, and actions are unchanged.
+- Accessibility: confirmed facts and row actions now expose named groups; desktop and mobile layouts retain readable order.
 
 ## Comparison history
 
-1. Initial implementation finding (P2): both brand content and the login block sat visibly lower than the source.
-2. Fix: changed the left panel from vertical centering to a measured top inset and shifted the desktop form block upward by 5vh; mobile keeps a neutral transform.
-3. Post-fix evidence: `docs/audits/login-split-desktop.png` measures brand top at 245.75px and form block top at 196.34px in the 1440 x 1024 viewport, matching the normalized source composition. The combined evidence is `docs/audits/login-split-comparison.png`.
+1. Initial comparison found two P2 density problems: merchant facts collapsed into a narrow vertical strip, and table type/status/action content wrapped into cramped columns. Fixed with a responsive two-column fact ledger, explicit table column proportions, non-wrapping compact labels, and grouped row actions.
+2. Post-fix comparison found one remaining P2: long question inputs were visually clipped on desktop and mobile. Replaced the single-line editor with a two-line wrapping editor. The final desktop and mobile captures show the full long question and no horizontal overflow.
 
-## Primary checks
+## Browser verification
 
-- Username and password controls render with associated labels.
-- Login button remains a POST form submission to `/api/access/login`.
-- Desktop viewport: 1440 x 1024 with document size 1440 x 1024.
-- Mobile viewport: 390 x 844 with document size 390 x 844.
-- Focused login and access tests: 29 passed.
-- Production build: passed.
+- Loaded the merchant profile and query library through the local Next.js runtime.
+- Verified desktop and mobile responsive states.
+- Verified route navigation and page rendering; mutation behavior remains covered by the focused component tests and was not triggered against the local data set.
+- Browser console errors checked: none.
+
+## Implementation checklist
+
+- [x] Desktop profile facts use two columns.
+- [x] Mobile profile facts remain one column.
+- [x] Query table columns no longer collapse labels vertically.
+- [x] Pending actions remain visually grouped.
+- [x] Long questions wrap instead of clipping.
+- [x] Focused tests pass.
 
 ## Follow-up polish
 
-- P3: add a licensed/source decorative line asset and an icon-library password visibility control if exact ornamental fidelity is later required.
+- No P3 follow-up is required for this scope.
 
 final result: passed

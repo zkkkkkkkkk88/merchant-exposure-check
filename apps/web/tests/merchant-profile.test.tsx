@@ -41,6 +41,19 @@ beforeEach(() => {
   vi.mocked(saveProfileAndGenerateAction).mockResolvedValue({ ok: true, data: { id: "set2" } });
 });
 
+it("groups each confirmed fact as a readable profile item", () => {
+  render(<ProfileEditor initialProfile={{
+    merchant_id: "m1",
+    facts: [
+      { field_key: "category.legacy", value: "口腔医疗机构", confirmation_status: "confirmed", confidence: 1, source_urls: [] },
+      { field_key: "product.list", value: ["洁牙", "补牙"], confirmation_status: "confirmed", confidence: 1, source_urls: [] },
+    ],
+  }} merchantId="m1" />);
+
+  expect(screen.getByRole("group", { name: "商家资料 原行业品类" })).toHaveTextContent("口腔医疗机构");
+  expect(screen.getByRole("group", { name: "商家资料 产品 / 服务项目" })).toHaveTextContent("洁牙、补牙");
+});
+
 it("parses pasted merchant text and requires confirmation before query generation", async () => {
   render(<ProfileEditor initialProfile={{ merchant_id: "m1", facts: [] }} merchantId="m1" />);
 

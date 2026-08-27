@@ -120,7 +120,21 @@ export function ProfileEditor({
       <section className="profile-facts-confirmed" aria-labelledby="confirmed-profile-title">
         <div className="section-heading"><div><p className="kicker">READ FIRST</p><h2 id="confirmed-profile-title">已确认商家资料</h2></div></div>
         <dl className="profile-fact-reading">
-          {facts.map((fact) => <div key={fact.field_key}><dt>{profileFieldLabel(fact.field_key)}</dt><dd>{displayValue(fact.value) || "当前未录入"}</dd><small>{fact.confirmation_status === "confirmed" ? "已确认" : "待确认"}</small></div>)}
+          {facts.map((fact) => {
+            const label = profileFieldLabel(fact.field_key);
+            return (
+              <div
+                aria-label={`商家资料 ${label}`}
+                data-status={fact.confirmation_status}
+                key={fact.field_key}
+                role="group"
+              >
+                <dt>{label}</dt>
+                <small>{fact.confirmation_status === "confirmed" ? "已确认" : "待确认"}</small>
+                <dd>{displayValue(fact.value) || "当前未录入"}</dd>
+              </div>
+            );
+          })}
         </dl>
       </section>
       <section className={`profile-administration${role === "demo" ? " profile-administration-locked" : ""}`} aria-labelledby="profile-administration-title">

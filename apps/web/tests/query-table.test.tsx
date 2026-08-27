@@ -57,6 +57,20 @@ beforeEach(() => {
 });
 
 describe("query library workspace", () => {
+  it("uses multiline editors so long questions remain readable", () => {
+    renderTable();
+
+    expect(screen.getByRole("textbox", { name: "编辑问题 q1" }).tagName).toBe("TEXTAREA");
+  });
+
+  it("groups row actions so review controls remain readable together", () => {
+    renderTable();
+
+    const pendingActions = screen.getByRole("group", { name: "问题操作 q1" });
+    expect(pendingActions).toContainElement(screen.getByRole("button", { name: "批准并用于检测" }));
+    expect(pendingActions).toContainElement(screen.getByRole("button", { name: "拒绝" }));
+  });
+
   it("distinguishes recommendation questions from information verification", () => {
     renderTable();
 
