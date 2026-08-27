@@ -173,6 +173,23 @@ describe("proxy integration", () => {
 });
 
 describe("access Route Handlers", () => {
+  it("redirects back to the public origin supplied by the reverse proxy", async () => {
+    configureCredentials();
+    const request = new NextRequest("http://0.0.0.0:3000/access/login", {
+      method: "POST",
+      body: new URLSearchParams({ username: "visitor", password: "演示密码-123" }),
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "x-forwarded-host": "example.trycloudflare.com",
+        "x-forwarded-proto": "https",
+      },
+    });
+
+    const response = await login(request);
+
+    expect(response.headers.get("location")).toBe("https://example.trycloudflare.com/");
+  });
+
   it.each([
     ["owner", "管理员密码-456", "admin"],
     ["visitor", "演示密码-123", "demo"],

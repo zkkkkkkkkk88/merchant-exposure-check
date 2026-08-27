@@ -7,6 +7,7 @@ import {
   ACCESS_SESSION_MAX_AGE_SECONDS,
   createAccessSession,
 } from "@/lib/access-session";
+import { publicRequestUrl } from "@/lib/public-request-url";
 
 type Credential = {
   role: AccessRole;
@@ -17,7 +18,7 @@ type Credential = {
 const DUMMY_PASSWORD_HASH = `scrypt$${"00".repeat(16)}$${"00".repeat(64)}`;
 
 function invalidLogin(request: NextRequest): NextResponse {
-  return NextResponse.redirect(new URL("/login?error=invalid", request.url), 303);
+  return NextResponse.redirect(publicRequestUrl(request, "/login?error=invalid"), 303);
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const session = await createAccessSession(credential.role, secret);
-  const response = NextResponse.redirect(new URL("/", request.url), 303);
+  const response = NextResponse.redirect(publicRequestUrl(request, "/"), 303);
   response.cookies.set({
     name: ACCESS_SESSION_COOKIE,
     value: session,
